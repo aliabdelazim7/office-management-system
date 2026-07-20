@@ -22,6 +22,9 @@ export class TenantContextInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    return this.tenantContext.run(ctx, () => next.handle());
+    // `run()` would exit before the returned observable is subscribed, taking
+    // the store with it and leaving every downstream query unscoped.
+    this.tenantContext.enter(ctx);
+    return next.handle();
   }
 }

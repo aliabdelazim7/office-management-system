@@ -35,6 +35,19 @@ export class TenantContextService {
     return this.als.run(ctx, fn);
   }
 
+  /**
+   * Bind `ctx` to the current async resource and everything it spawns.
+   *
+   * `run()` is not usable at the guard/interceptor boundary: it returns as soon
+   * as its callback returns, and both Prisma promises and RxJS observables are
+   * lazy — the work starts when they are awaited or subscribed, by which point
+   * `run()` has already exited and the store is gone. `enterWith` has no such
+   * exit, so the context survives to the point the query actually executes.
+   */
+  enter(ctx: TenantContext): void {
+    this.als.enterWith(ctx);
+  }
+
   /** The active context, or undefined on unauthenticated/system paths. */
   get(): TenantContext | undefined {
     return this.als.getStore();
