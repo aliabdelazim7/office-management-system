@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  ACCOUNTANT
+  EMPLOYEE
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_INVITATION
+  SUSPENDED
+}
+
+enum LegalType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  LIMITED_PARTNERSHIP
+  LLC
+  JOINT_STOCK
+  ONE_PERSON_COMPANY
+}
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum DocumentCategory {
+  COMMERCIAL_REGISTER
+  TAX_CARD
+  SOCIAL_INSURANCE
+  FEDERATION_MEMBERSHIP
+  CONTRACT
+  NATIONAL_ID
+  LICENSE
+  FINANCIAL_STATEMENT
+  CORRESPONDENCE
+  OTHER
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique
+  logoUrl   String?
+  phone     String?
+  email     String?
+  address   String?
+  taxNumber String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users               User[]
+  clients             Client[]
+  documents           Document[]
+  commercialRegisters CommercialRegister[]
+  taxCards            TaxCard[]
+  socialInsurances    SocialInsurance[]
+}
+
+model User {
+  id           String     @id @default(uuid())
+  tenantId     String
+  name         String
+  email        String     @unique
+  passwordHash String?
+  role         UserRole   @default(EMPLOYEE)
+  status       UserStatus @default(ACTIVE)
+  phone        String?
+  jobTitle     String?
+  createdAt    DateTime   @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents Document[]
+}
+
+model Client {
+  id            String       @id @default(uuid())
+  tenantId      String
+  clientCode    String
+  status        ClientStatus @default(ACTIVE)
+  name          String
+  companyName   String
+  tradeName     String?
+  legalType     LegalType    @default(SOLE_PROPRIETORSHIP)
+  phone         String
+  whatsapp      String?
+  email         String?
+  address       String?
+  branchesCount Int          @default(1)
+  createdAt     DateTime     @default(now())
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents          Document[]
+  commercialRegister CommercialRegister?
+  taxCard            TaxCard?
+  socialInsurance    SocialInsurance?
+}
+
+model Document {
+  id           String           @id @default(uuid())
+  tenantId     String
+  clientId     String?
+  uploaderId   String
+  title        String
+  category     DocumentCategory @default(OTHER)
+  fileUrl      String           @default("")
+  fileType     String           @default("pdf")
+  expiryDate   DateTime?
+  reminderDays Int              @default(30)
+  createdAt    DateTime         @default(now())
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploader User    @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+}
+
+model CommercialRegister {
+  id             String   @id @default(uuid())
+  tenantId       String
+  clientId       String   @unique
+  registerNumber String
+  depositNumber  String?
+  tradeName      String
+  capital        Float    @default(0)
+  activity       String
+  address        String
+  registrationDate DateTime
+  expiryDate     DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model TaxCard {
+  id         String   @id @default(uuid())
+  tenantId   String
+  clientId   String   @unique
+  cardNumber String
+  activity   String
+  taxOffice  String
+  expiryDate DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model SocialInsurance {
+  id              String   @id @default(uuid())
+  tenantId        String
+  clientId        String   @unique
+  insuranceNumber String
+  openDate        DateTime
+  workforceCount  Int      @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}

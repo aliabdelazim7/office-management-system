@@ -1,9 +1,9 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'frontend'
+  - 'backend'
 
-# Build scripts are opt-in. Only packages that genuinely need a postinstall
-# step are approved here — everything else installs without executing code.
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
