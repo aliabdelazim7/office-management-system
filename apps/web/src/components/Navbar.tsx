@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Shield, UserCheck, CheckCircle, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../lib/store';
 import { UserRole } from '@saas/types';
+import { API_BASE_URL } from '../lib/api';
 
 export default function Navbar() {
   const { user, switchDemoRole } = useAuthStore();
@@ -20,7 +21,7 @@ export default function Navbar() {
 
     setIsSearching(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/search?q=${encodeURIComponent(query)}`, {
+      const res = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`, {
         headers: { Authorization: 'Bearer demo-jwt-token-active-session' },
       });
       if (res.ok) {
