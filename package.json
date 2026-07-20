@@ -8,19 +8,15 @@
     "postinstall": "pnpm --filter @saas/database generate",
     "build:packages": "pnpm --filter @saas/types build && pnpm --filter @saas/database build",
     "build": "pnpm build:packages && pnpm --filter api build && pnpm --filter web build",
-    "build:web": "pnpm --filter @saas/types build && pnpm --filter web build",
-    "build:api": "pnpm build:packages && pnpm --filter api build",
-    "typecheck": "pnpm --filter @saas/database typecheck && pnpm --filter api exec tsc --noEmit",
     "db:generate": "pnpm --filter @saas/database generate",
-    "db:migrate": "pnpm --filter @saas/database migrate",
-    "db:deploy": "pnpm --filter @saas/database migrate:deploy",
-    "db:studio": "pnpm --filter @saas/database studio",
+    "db:push": "pnpm --filter @saas/database push",
     "db:seed": "pnpm --filter @saas/database seed"
   },
-  "devDependencies": {
-    "typescript": "^5.7.2"
+  "dependencies": {
+    "next": "^14.2.3"
   },
-  "engines": {
-    "node": ">=20"
+  "devDependencies": {
+    "next": "^14.2.3",
+    "typescript": "^5.3.3"
   }
 }

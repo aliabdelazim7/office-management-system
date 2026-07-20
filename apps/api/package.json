@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "prebuild": "pnpm --filter @saas/database generate",
+    "prebuild": "pnpm --filter @saas/types build && pnpm --filter @saas/database build",
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
