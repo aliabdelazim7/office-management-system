@@ -35,12 +35,8 @@ services:
       - key: NODE_ENV
         value: production
 
-      - key: API_PORT
-        # Render injects PORT; the app reads API_PORT, so bridge them.
-        fromService:
-          type: web
-          name: office-erp-api
-          property: port
+      # No API_PORT here on purpose: Render injects PORT, and the config layer
+      # prefers PORT over API_PORT precisely so the platform stays in control.
 
       - key: API_PREFIX
         value: api/v1

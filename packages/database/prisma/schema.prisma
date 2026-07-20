@@ -32,6 +32,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // `native` covers local development. The RHEL target is what Vercel's and
+  // Render's Linux runtimes need — without it the query engine binary is
+  // missing at runtime and every request fails with a confusing
+  // "Query engine binary could not be found" error.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

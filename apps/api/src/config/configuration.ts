@@ -7,6 +7,10 @@ import { z } from 'zod';
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Render, Railway, Fly and Heroku all inject PORT and expect the process to
+  // bind to it. Binding to anything else means the health check never passes
+  // and the deploy is marked failed with a perfectly healthy app inside.
+  PORT: z.coerce.number().int().positive().optional(),
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_PREFIX: z.string().default('api/v1'),
 
@@ -53,7 +57,8 @@ export function loadConfiguration() {
   return {
     nodeEnv: env.NODE_ENV,
     isProduction: env.NODE_ENV === 'production',
-    port: env.API_PORT,
+    // Platform-injected PORT wins over the local default.
+    port: env.PORT ?? env.API_PORT,
     apiPrefix: env.API_PREFIX,
     jwt: {
       accessSecret: env.JWT_ACCESS_SECRET,

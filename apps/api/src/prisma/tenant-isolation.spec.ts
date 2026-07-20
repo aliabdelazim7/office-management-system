@@ -50,7 +50,7 @@ let eliteId: string;
 let bayanId: string;
 
 beforeAll(async () => {
-  const tenants = await prisma.tenant.findMany({ select: { id: true, slug: true } });
+  const tenants = await prisma.client.tenant.findMany({ select: { id: true, slug: true } });
   eliteId = tenants.find((t) => t.slug === 'elite')!.id;
   bayanId = tenants.find((t) => t.slug === 'bayan')!.id;
   expect(eliteId).toBeDefined();
@@ -141,7 +141,7 @@ describe('tenant isolation', () => {
   it('scopes aggregates, not just row reads', async () => {
     const eliteCount = await runAs(asTenant(eliteId), () => prisma.scoped.client.count());
     const bayanCount = await runAs(asTenant(bayanId), () => prisma.scoped.client.count());
-    const total = await prisma.client.count(); // unscoped baseline
+    const total = await prisma.client.client.count(); // unscoped baseline
 
     expect(eliteCount).toBe(3);
     expect(bayanCount).toBe(2);
@@ -215,7 +215,7 @@ describe('credentials', () => {
   });
 
   it('scopes email uniqueness per tenant, so the same address can exist twice', async () => {
-    const all = await prisma.user.findMany({ select: { email: true, tenantId: true } });
+    const all = await prisma.client.user.findMany({ select: { email: true, tenantId: true } });
     const eliteOwner = all.find((u) => u.email === 'owner@elite.test');
     const bayanOwner = all.find((u) => u.email === 'owner@bayan.test');
     expect(eliteOwner!.tenantId).not.toBe(bayanOwner!.tenantId);

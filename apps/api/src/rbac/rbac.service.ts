@@ -30,14 +30,14 @@ export class RbacService implements OnModuleInit {
 
   /**
    * Reconcile the `permissions` table with the catalogue in code.
-   * Idempotent, so it is safe to run on every boot — this is deliberately not
+   * Idempotent, so it is safe to run on every boot â€” this is deliberately not
    * a migration, because a migration that mutates data drifts from a fresh
    * `migrate deploy` and cannot be re-run.
    */
   async syncCatalog(): Promise<void> {
     await this.prisma.$transaction(
       PERMISSION_CATALOG.map((p, index) =>
-        this.prisma.permission.upsert({
+        this.prisma.client.permission.upsert({
           where: { code: p.code },
           create: { ...p, sortOrder: index },
           update: {
@@ -54,7 +54,7 @@ export class RbacService implements OnModuleInit {
 
     // Remove codes that no longer exist in the catalogue. Cascades to
     // role_permissions so no tenant keeps a grant on a dead code.
-    const removed = await this.prisma.permission.deleteMany({
+    const removed = await this.prisma.client.permission.deleteMany({
       where: { code: { notIn: ALL_PERMISSION_CODES } },
     });
 
@@ -69,7 +69,7 @@ export class RbacService implements OnModuleInit {
    */
   async provisionTenant(
     tenantId: string,
-    tx: Prisma.TransactionClient | PrismaClient = this.prisma,
+    tx: Prisma.TransactionClient | PrismaClient = this.prisma.client,
   ): Promise<void> {
     const rows = (Object.entries(DEFAULT_ROLE_PERMISSIONS) as [UserRole, string[]][]).flatMap(
       ([role, codes]) => codes.map((permissionCode) => ({ tenantId, role, permissionCode, granted: true })),
@@ -96,7 +96,7 @@ export class RbacService implements OnModuleInit {
     if (rows.length === 0) {
       // The tenant has no matrix yet (legacy row, or provisioning was
       // interrupted). Fall back to the defaults for the role rather than
-      // locking the user out entirely — but never widen beyond the default.
+      // locking the user out entirely â€” but never widen beyond the default.
       this.logger.warn(`No permission matrix for tenant ${tenantId} role ${role}; using defaults.`);
       permissions = new Set(DEFAULT_ROLE_PERMISSIONS[role as UserRole] ?? []);
     } else {
@@ -107,7 +107,7 @@ export class RbacService implements OnModuleInit {
     return permissions;
   }
 
-  /** Drop cached grants — call after any matrix mutation. */
+  /** Drop cached grants â€” call after any matrix mutation. */
   invalidate(tenantId: string, role?: UserRole): void {
     if (role) {
       this.cache.delete(`${tenantId}:${role}`);

@@ -8,7 +8,7 @@
     "postinstall": "pnpm --filter @saas/database generate",
     "build:packages": "pnpm --filter @saas/types build && pnpm --filter @saas/database build",
     "build": "pnpm build:packages && pnpm --filter api build && pnpm --filter web build",
-    "build:web": "pnpm build:packages && pnpm --filter web build",
+    "build:web": "pnpm --filter @saas/types build && pnpm --filter web build",
     "build:api": "pnpm build:packages && pnpm --filter api build",
     "typecheck": "pnpm --filter @saas/database typecheck && pnpm --filter api exec tsc --noEmit",
     "db:generate": "pnpm --filter @saas/database generate",

@@ -44,9 +44,22 @@ const WHERE_SCOPED_OPS = new Set([
 
 export type ScopedPrismaClient = ReturnType<PrismaService['buildScopedClient']>;
 
+/**
+ * Wraps PrismaClient by composition rather than extending it.
+ *
+ * PrismaClient's constructor returns a Proxy that does not forward the receiver
+ * to property getters. Subclassing it therefore produces a class where `this`
+ * inside any getter is the raw internal object — which has none of the model
+ * delegates. `svc.user` works from outside while `this.user` is undefined from
+ * within, a discrepancy that only shows up at runtime. Holding the client in a
+ * field sidesteps the whole problem.
+ */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
+
+  /** Raw, UNSCOPED client. Prefer `scoped`; see `unsafeUnscoped`. */
+  readonly client: PrismaClient;
 
   /**
    * Tenant-scoped client. Every query is rewritten to include the active
@@ -56,24 +69,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   readonly scoped: ScopedPrismaClient;
 
   constructor(private readonly tenantContext: TenantContextService) {
-    super({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? [{ emit: 'event', level: 'query' }, 'warn', 'error']
-          : ['warn', 'error'],
+    this.client = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['warn', 'error'],
     });
     this.scoped = this.buildScopedClient();
   }
 
   async onModuleInit(): Promise<void> {
-    await this.$connect();
+    await this.client.$connect();
     this.logger.log(
       `Prisma connected. Tenant-scoped models: ${TENANT_SCOPED_MODELS.size}, global: ${GLOBAL_MODELS.size}`,
     );
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
+    await this.client.$disconnect();
   }
 
   /**
@@ -85,13 +95,26 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * why the query cannot know its tenant yet.
    */
   get unsafeUnscoped(): PrismaClient {
-    return this;
+    return this.client;
+  }
+
+  /** Transactions always run unscoped; scope each statement inside explicitly. */
+  get $transaction(): PrismaClient['$transaction'] {
+    return this.client.$transaction.bind(this.client);
+  }
+
+  get $queryRaw(): PrismaClient['$queryRaw'] {
+    return this.client.$queryRaw.bind(this.client);
+  }
+
+  async $disconnect(): Promise<void> {
+    await this.client.$disconnect();
   }
 
   private buildScopedClient() {
     const ctx = this.tenantContext;
 
-    return this.$extends({
+    return this.client.$extends({
       name: 'tenant-isolation',
       query: {
         $allModels: {
