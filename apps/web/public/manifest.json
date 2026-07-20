@@ -1,0 +1,9 @@
+{
+  "name": "نظام إدارة مكتب الخدمات والاستشارات",
+  "short_name": "Office ERP",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "orientation": "portrait"
+}

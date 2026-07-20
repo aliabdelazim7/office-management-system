@@ -1,0 +1,1301 @@
+// =============================================================================
+//  Office ERP — Enterprise Multi-Tenant SaaS
+//  Database Schema (PostgreSQL)
+// =============================================================================
+//
+//  TENANT ISOLATION CONTRACT
+//  -------------------------
+//  Every business entity carries a `tenantId` and an index on it. There are no
+//  exceptions — not even for rows only reachable through a parent (e.g. Payment
+//  via Invoice). A denormalised tenantId is the price of being able to assert
+//  isolation with a single WHERE clause and to enforce it centrally in the
+//  Prisma client extension rather than trusting every query author.
+//
+//  All tenant-scoped FKs cascade from Tenant so a tenant delete is total.
+//
+//  MONEY
+//  -----
+//  All monetary columns are Decimal(14,2). Never Float — binary floating point
+//  cannot represent 0.10 and this system issues invoices.
+//
+//  UNIQUENESS
+//  ----------
+//  Human-facing identifiers (clientCode, invoiceNumber, orderNumber) are unique
+//  PER TENANT, never globally. Sequence allocation uses a per-tenant counter
+//  row updated inside a transaction, not COUNT(*)+1 — see `NumberSequence`.
+//
+//  SOFT DELETE
+//  -----------
+//  Core records use `deletedAt`. Financial records (Payment, LedgerEntry) and
+//  AuditLog are append-only and are never soft-deleted.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Pooled connection for the application (Neon/Supabase pgbouncer).
+  url       = env("DATABASE_URL")
+  // Direct connection — `prisma migrate` cannot run through a transaction pooler.
+  directUrl = env("DIRECT_URL")
+}
+
+// =============================================================================
+//  ENUMS
+// =============================================================================
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  ACCOUNTANT
+  EMPLOYEE
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_INVITATION
+  SUSPENDED
+}
+
+/// الكيانات القانونية المصرية
+enum LegalType {
+  SOLE_PROPRIETORSHIP // منشأة فردية
+  GENERAL_PARTNERSHIP // شركة تضامن
+  LIMITED_PARTNERSHIP // توصية بسيطة
+  LLC // ذات مسؤولية محدودة
+  JOINT_STOCK // مساهمة
+  ONE_PERSON_COMPANY // شركة الشخص الواحد
+}
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum DocumentCategory {
+  COMMERCIAL_REGISTER
+  TAX_CARD
+  SOCIAL_INSURANCE
+  FEDERATION_MEMBERSHIP
+  CONTRACT
+  NATIONAL_ID
+  LICENSE
+  FINANCIAL_STATEMENT
+  CORRESPONDENCE
+  OTHER
+}
+
+enum OcrStatus {
+  NOT_APPLICABLE
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  ARCHIVED
+}
+
+enum ServiceOrderStatus {
+  DRAFT
+  IN_PROGRESS
+  BLOCKED
+  AWAITING_CLIENT
+  COMPLETED
+  CANCELLED
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  SKIPPED
+}
+
+enum FieldTaskStatus {
+  ASSIGNED
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  INSTAPAY
+  VODAFONE_CASH
+  CREDIT_CARD
+  OTHER
+}
+
+enum LedgerDirection {
+  DEBIT // على العميل
+  CREDIT // للعميل
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum NotificationEvent {
+  DOCUMENT_EXPIRING
+  DOCUMENT_EXPIRED
+  PAYMENT_OVERDUE
+  TASK_OVERDUE
+  TASK_ASSIGNED
+  SERVICE_STEP_COMPLETED
+  CONTRACT_EXPIRING
+  CUSTOM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  EXPORT
+  PERMISSION_CHANGE
+  FILE_DOWNLOAD
+}
+
+/// أنواع التسلسل الرقمي لكل مستأجر
+enum SequenceKind {
+  CLIENT_CODE
+  INVOICE_NUMBER
+  SERVICE_ORDER
+  CONTRACT_NUMBER
+  EXPENSE_VOUCHER
+}
+
+// =============================================================================
+//  TENANCY & IDENTITY
+// =============================================================================
+
+/// المكتب — وحدة العزل الأساسية في النظام
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String       @unique // subdomain: elite.app.com
+  status      TenantStatus @default(TRIAL)
+  logoUrl     String?
+  phone       String?
+  email       String?
+  address     String?
+  taxNumber   String?
+  /// إعدادات المكتب: العملة، المنطقة الزمنية، تفضيلات التنبيهات
+  settings    Json         @default("{}")
+  trialEndsAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  users                 User[]
+  refreshTokens         RefreshToken[]
+  invitations           Invitation[]
+  rolePermissions       RolePermission[]
+  auditLogs             AuditLog[]
+  sequences             NumberSequence[]
+  clients               Client[]
+  clientContacts        ClientContact[]
+  clientNotes           ClientNote[]
+  documents             Document[]
+  documentVersions      DocumentVersion[]
+  commercialRegisters   CommercialRegister[]
+  crBranches            CommercialRegisterBranch[]
+  taxCards              TaxCard[]
+  socialInsurances      SocialInsurance[]
+  insuredEmployees      InsuredEmployee[]
+  insuredVehicles       InsuredVehicle[]
+  federationMemberships FederationMembership[]
+  contractTemplates     ContractTemplate[]
+  contracts             Contract[]
+  serviceCatalog        ServiceCatalogItem[]
+  serviceOrders         ServiceOrder[]
+  serviceOrderSteps     ServiceOrderStep[]
+  fieldTasks            FieldTask[]
+  fieldTaskEvents       FieldTaskEvent[]
+  invoices              Invoice[]
+  invoiceItems          InvoiceItem[]
+  payments              Payment[]
+  expenseCategories     ExpenseCategory[]
+  expenses              Expense[]
+  ledgerEntries         LedgerEntry[]
+  notificationTemplates NotificationTemplate[]
+  notifications         Notification[]
+  whatsAppMessages      WhatsAppMessage[]
+  aiQueryLogs           AiQueryLog[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("tenants")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  name         String
+  email        String
+  /// null until an invited user sets a password — login MUST guard for this
+  passwordHash String?
+  role         UserRole   @default(EMPLOYEE)
+  status       UserStatus @default(ACTIVE)
+
+  phone      String?
+  nationalId String?
+  avatarUrl  String?
+
+  // بيانات الموارد البشرية
+  jobTitle   String?
+  department String?
+  salary     Decimal?  @db.Decimal(14, 2)
+  hireDate   DateTime?
+
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  refreshTokens      RefreshToken[]
+  auditLogs          AuditLog[]
+  invitationsSent    Invitation[]       @relation("InvitedBy")
+  uploadedDocuments  Document[]         @relation("UploadedBy")
+  documentVersions   DocumentVersion[]  @relation("VersionAuthor")
+  clientNotes        ClientNote[]
+  ownedClients       Client[]           @relation("AccountManager")
+  assignedOrders     ServiceOrder[]     @relation("OrderOwner")
+  assignedSteps      ServiceOrderStep[] @relation("StepAssignee")
+  assignedFieldTasks FieldTask[]        @relation("FieldAssignee")
+  fieldTaskEvents    FieldTaskEvent[]
+  recordedPayments   Payment[]          @relation("PaymentReceivedBy")
+  recordedExpenses   Expense[]          @relation("ExpenseRecordedBy")
+  attributedExpenses Expense[]          @relation("ExpenseAttributedTo")
+  notifications      Notification[]     @relation("NotificationRecipient")
+  aiQueryLogs        AiQueryLog[]
+
+  /// البريد فريد داخل المكتب فقط — نفس البريد قد يعمل في مكتبين مختلفين
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@index([tenantId, role])
+  @@index([email])
+  @@map("users")
+}
+
+/// Refresh tokens مخزنة كـ hash — تسريب قاعدة البيانات لا يعطي جلسة
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  familyId  String    @db.Uuid // كشف إعادة الاستخدام: إبطال العائلة كلها
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// الانضمام بالدعوة فقط — لا تسجيل ذاتي داخل مكتب قائم
+model Invitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  email       String
+  role        UserRole
+  tokenHash   String    @unique
+  invitedById String    @db.Uuid
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedBy User   @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, email])
+  @@index([expiresAt])
+  @@map("invitations")
+}
+
+/// كتالوج الصلاحيات — مصدر الحقيقة الوحيد، الواجهة ترسم نفسها منه
+model Permission {
+  code        String  @id // "client.create"
+  groupKey    String // "crm"
+  groupLabel  String // "إدارة العملاء"
+  labelAr     String
+  labelEn     String
+  description String?
+  sortOrder   Int     @default(0)
+
+  rolePermissions RolePermission[]
+
+  @@index([groupKey])
+  @@map("permissions")
+}
+
+/// مصفوفة الصلاحيات لكل دور داخل كل مكتب — تسمح بتخصيص لكل tenant
+model RolePermission {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  role           UserRole
+  permissionCode String
+  granted        Boolean  @default(true)
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@unique([tenantId, role, permissionCode])
+  @@index([tenantId, role])
+  @@map("role_permissions")
+}
+
+/// عدّاد تسلسلي لكل مكتب — يُحدَّث داخل معاملة، لا COUNT(*)+1
+model NumberSequence {
+  id       String       @id @default(uuid()) @db.Uuid
+  tenantId String       @db.Uuid
+  kind     SequenceKind
+  prefix   String       @default("")
+  current  Int          @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, kind])
+  @@map("number_sequences")
+}
+
+/// سجل تدقيق append-only
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @db.Uuid
+  userId      String?     @db.Uuid
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  summary     String?
+  beforeState Json?
+  afterState  Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, userId])
+  @@map("audit_logs")
+}
+
+// =============================================================================
+//  CRM — Client 360
+// =============================================================================
+
+model Client {
+  id         String       @id @default(uuid()) @db.Uuid
+  tenantId   String       @db.Uuid
+  clientCode String
+  status     ClientStatus @default(ACTIVE)
+
+  // الهوية
+  name        String // اسم المسؤول / صاحب المنشأة
+  companyName String
+  tradeName   String? // السمة التجارية
+  legalType   LegalType @default(SOLE_PROPRIETORSHIP)
+
+  // التواصل
+  phone       String
+  whatsapp    String?
+  email       String?
+  address     String?
+  city        String?
+  governorate String?
+
+  // النشاط
+  businessActivity String?
+  branchesCount    Int     @default(1)
+  nationalId       String? // الرقم القومي لصاحب المنشأة
+
+  accountManagerId String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accountManager User?  @relation("AccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+
+  contacts             ClientContact[]
+  notes                ClientNote[]
+  documents            Document[]
+  commercialRegister   CommercialRegister?
+  taxCard              TaxCard?
+  socialInsurance      SocialInsurance?
+  federationMembership FederationMembership?
+  contracts            Contract[]
+  serviceOrders        ServiceOrder[]
+  fieldTasks           FieldTask[]
+  invoices             Invoice[]
+  ledgerEntries        LedgerEntry[]
+  notifications        Notification[]
+  whatsAppMessages     WhatsAppMessage[]
+
+  @@unique([tenantId, clientCode])
+  @@index([tenantId, status])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, accountManagerId])
+  @@index([tenantId, companyName])
+  @@index([tenantId, phone])
+  @@map("clients")
+}
+
+/// جهات اتصال إضافية داخل شركة العميل
+model ClientContact {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  clientId  String   @db.Uuid
+  name      String
+  position  String?
+  phone     String?
+  whatsapp  String?
+  email     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, clientId])
+  @@map("client_contacts")
+}
+
+model ClientNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  clientId  String   @db.Uuid
+  authorId  String   @db.Uuid
+  body      String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, clientId, createdAt])
+  @@map("client_notes")
+}
+
+// =============================================================================
+//  DOCUMENT VAULT
+// =============================================================================
+
+model Document {
+  id         String @id @default(uuid()) @db.Uuid
+  tenantId   String @db.Uuid
+  clientId   String? @db.Uuid
+  uploaderId String @db.Uuid
+
+  title    String
+  category DocumentCategory @default(OTHER)
+
+  // التخزين — مفتاح كائن، لا رابط عام. الوصول عبر روابط موقّعة قصيرة العمر
+  storageKey String
+  fileName   String
+  mimeType   String
+  fileSize   Int
+  checksum   String? // SHA-256 لكشف التلف/التكرار
+
+  expiryDate   DateTime?
+  reminderDays Int       @default(30)
+
+  // بنية جاهزة لـ OCR — الحقول موجودة، المحرك يُوصَّل في Phase 9
+  ocrStatus OcrStatus @default(NOT_APPLICABLE)
+  ocrText   String?
+  ocrData   Json?
+
+  version   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploader User    @relation("UploadedBy", fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  versions DocumentVersion[]
+
+  @@index([tenantId, clientId])
+  @@index([tenantId, category])
+  @@index([tenantId, expiryDate]) // محرك تنبيهات الانتهاء
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, ocrStatus])
+  @@map("documents")
+}
+
+/// سجل تعديلات الملف — كل رفع جديد يحفظ النسخة السابقة
+model DocumentVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  documentId String   @db.Uuid
+  authorId   String   @db.Uuid
+  version    Int
+  storageKey String
+  fileName   String
+  fileSize   Int
+  changeNote String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User     @relation("VersionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([tenantId, documentId])
+  @@map("document_versions")
+}
+
+// =============================================================================
+//  GOVERNMENT DOCUMENTS
+// =============================================================================
+
+/// السجل التجاري
+model CommercialRegister {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  clientId String @unique @db.Uuid
+
+  registerNumber     String // رقم السجل
+  depositNumber      String? // رقم الإيداع
+  tradeName          String // السمة التجارية
+  capital            Decimal @db.Decimal(14, 2) // رأس المال
+  activity           String // النشاط
+  address            String
+  registrationOffice String? // مكتب السجل التجاري
+
+  registrationDate DateTime // تاريخ القيد
+  expiryDate       DateTime // تاريخ الانتهاء
+  reminderDays     Int      @default(60)
+
+  /// التعديلات والإضافات على السجل عبر الزمن
+  amendments Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Client                     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  branches CommercialRegisterBranch[]
+
+  @@unique([tenantId, registerNumber])
+  @@index([tenantId, expiryDate])
+  @@map("commercial_registers")
+}
+
+/// الفروع — جدول حقيقي لا حقل JSON، لأنها تُستعلم وتُجدَّد منفردة
+model CommercialRegisterBranch {
+  id         String @id @default(uuid()) @db.Uuid
+  tenantId   String @db.Uuid
+  registerId String @db.Uuid
+
+  branchNumber String
+  address      String
+  activity     String?
+  openDate     DateTime?
+  expiryDate   DateTime?
+  isActive     Boolean   @default(true)
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  register CommercialRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, registerId])
+  @@index([tenantId, expiryDate])
+  @@map("commercial_register_branches")
+}
+
+/// البطاقة الضريبية
+model TaxCard {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  clientId String @unique @db.Uuid
+
+  cardNumber   String // الرقم الضريبي
+  activity     String // النشاط
+  taxOffice    String // المأمورية
+  taxCode      String? // الكود
+  serialNumber String? // الرقم المسلسل
+  printDate    DateTime? // تاريخ الطباعة
+  expiryDate   DateTime
+  reminderDays Int       @default(60)
+
+  // المنظومة الضريبية (الفاتورة الإلكترونية)
+  taxSystemEnrolled Boolean   @default(false)
+  taxSystemStart    DateTime?
+  taxSystemEnd      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, cardNumber])
+  @@index([tenantId, expiryDate])
+  @@index([tenantId, taxSystemEnd])
+  @@map("tax_cards")
+}
+
+/// التأمينات الاجتماعية
+model SocialInsurance {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  clientId String @unique @db.Uuid
+
+  insuranceNumber String // رقم المنشأة التأميني
+  insuranceOffice String? // مكتب التأمينات
+  openDate        DateTime
+  workforceCount  Int      @default(0)
+
+  lastRenewalDate DateTime?
+  expiryDate      DateTime?
+  reminderDays    Int       @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employees InsuredEmployee[]
+  vehicles  InsuredVehicle[]
+
+  @@unique([tenantId, insuranceNumber])
+  @@index([tenantId, expiryDate])
+  @@map("social_insurances")
+}
+
+/// العمالة المؤمن عليها
+model InsuredEmployee {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  insuranceId String @db.Uuid
+
+  name            String
+  nationalId      String
+  insuranceNumber String?
+  jobTitle        String?
+  insuranceWage   Decimal?  @db.Decimal(14, 2)
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  insurance SocialInsurance @relation(fields: [insuranceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, insuranceId])
+  @@index([tenantId, nationalId])
+  @@map("insured_employees")
+}
+
+/// السيارات المسجلة على المنشأة
+model InsuredVehicle {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  insuranceId String @db.Uuid
+
+  plateNumber   String
+  vehicleType   String?
+  model         String?
+  licenseExpiry DateTime?
+  notes         String?
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  insurance SocialInsurance @relation(fields: [insuranceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, insuranceId])
+  @@index([tenantId, licenseExpiry])
+  @@map("insured_vehicles")
+}
+
+/// عضوية الاتحاد (اتحاد المقاولين / الغرف التجارية)
+model FederationMembership {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  clientId String @unique @db.Uuid
+
+  membershipNumber  String // رقم العضوية
+  federationName    String? // اسم الاتحاد/الغرفة
+  classification    String // التصنيف
+  category          String // الفئة
+  enrollmentDate    DateTime
+  annualRenewalDate DateTime
+  reminderDays      Int      @default(45)
+
+  lastPromotionDate DateTime? // تاريخ آخر ترقٍّ
+  experienceYears   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, membershipNumber])
+  @@index([tenantId, annualRenewalDate])
+  @@map("federation_memberships")
+}
+
+// =============================================================================
+//  CONTRACTS
+// =============================================================================
+
+/// قالب عقد بحقول ديناميكية — {{client.companyName}} تُملأ آلياً
+model ContractTemplate {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+
+  name        String
+  description String?
+  /// جسم القالب (HTML) بمتغيرات handlebars
+  body        String
+  /// تعريف الحقول الديناميكية: [{key,label,type,required,default}]
+  fieldSchema Json    @default("[]")
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contracts Contract[]
+
+  @@index([tenantId, isActive])
+  @@map("contract_templates")
+}
+
+model Contract {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @db.Uuid
+  clientId   String  @db.Uuid
+  templateId String? @db.Uuid
+
+  contractNumber String
+  title          String
+  status         ContractStatus @default(DRAFT)
+
+  contractDate DateTime
+  startDate    DateTime?
+  expiryDate   DateTime?
+  reminderDays Int       @default(30)
+
+  value Decimal? @db.Decimal(14, 2)
+
+  /// القيم المُدخلة للحقول الديناميكية وقت الإنشاء
+  fieldValues Json    @default("{}")
+  /// نسخة PDF المُولَّدة
+  storageKey  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  template ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, contractNumber])
+  @@index([tenantId, clientId])
+  @@index([tenantId, status])
+  @@index([tenantId, expiryDate])
+  @@map("contracts")
+}
+
+// =============================================================================
+//  SERVICE WORKFLOW ENGINE
+// =============================================================================
+
+/// تعريف الخدمة وقالب مراحلها — تأسيس شركة، تجديد سجل، ...
+model ServiceCatalogItem {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+
+  name        String
+  description String?
+  basePrice   Decimal @default(0) @db.Decimal(14, 2)
+  /// المدة المتوقعة بالأيام — تُستخدم لحساب dueDate
+  estimatedDays Int     @default(7)
+  /// قالب المراحل: [{order,name,description,expectedDays,requiredDocuments[]}]
+  stepTemplate  Json    @default("[]")
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders ServiceOrder[]
+
+  @@index([tenantId, isActive])
+  @@map("service_catalog_items")
+}
+
+/// أمر خدمة — نسخة حية من قالب الخدمة لعميل محدد
+model ServiceOrder {
+  id            String  @id @default(uuid()) @db.Uuid
+  tenantId      String  @db.Uuid
+  clientId      String  @db.Uuid
+  catalogItemId String? @db.Uuid
+  ownerId       String? @db.Uuid // الموظف المسؤول عن الأمر ككل
+
+  orderNumber String
+  serviceName String
+  status      ServiceOrderStatus @default(DRAFT)
+
+  agreedPrice Decimal   @db.Decimal(14, 2)
+  startDate   DateTime  @default(now())
+  dueDate     DateTime
+  completedAt DateTime?
+
+  notes String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client      Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  catalogItem ServiceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  owner       User?               @relation("OrderOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  steps      ServiceOrderStep[]
+  fieldTasks FieldTask[]
+  invoices   Invoice[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId, clientId])
+  @@index([tenantId, status])
+  @@index([tenantId, ownerId])
+  @@index([tenantId, dueDate])
+  @@map("service_orders")
+}
+
+/// مرحلة في سير العمل — كيان مستقل بمسؤول وموعد وملفات، لا حقل JSON
+model ServiceOrderStep {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @db.Uuid
+  orderId    String  @db.Uuid
+  assigneeId String? @db.Uuid
+
+  stepOrder   Int
+  name        String
+  description String?
+  status      StepStatus @default(PENDING)
+
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  notes       String?
+  blockReason String?
+  /// معرفات المستندات المرفقة بهذه المرحلة
+  documentIds String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order    ServiceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignee User?        @relation("StepAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@unique([orderId, stepOrder])
+  @@index([tenantId, orderId])
+  @@index([tenantId, assigneeId, status])
+  @@index([tenantId, dueDate])
+  @@map("service_order_steps")
+}
+
+// =============================================================================
+//  FIELD EMPLOYEE SYSTEM
+// =============================================================================
+
+/// مهمة ميدانية — موظف خارج المكتب لدى جهة حكومية
+model FieldTask {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @db.Uuid
+  assigneeId String  @db.Uuid
+  clientId   String? @db.Uuid
+  orderId    String? @db.Uuid
+
+  title        String
+  govEntity    String // الجهة الحكومية
+  locationName String
+  /// إحداثيات الوجهة المستهدفة — للتحقق من الوصول
+  targetLat    Float?
+  targetLng    Float?
+
+  status      FieldTaskStatus @default(ASSIGNED)
+  scheduledAt DateTime
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  report     String?
+  failReason String?
+  /// مفاتيح صور الإثبات في التخزين
+  photoKeys  String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignee User          @relation("FieldAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
+  client   Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  order    ServiceOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  events FieldTaskEvent[]
+
+  @@index([tenantId, assigneeId, status])
+  @@index([tenantId, scheduledAt])
+  @@index([tenantId, clientId])
+  @@map("field_tasks")
+}
+
+/// أحداث GPS/الحالة أثناء المهمة — سجل زمني غير قابل للتعديل
+model FieldTaskEvent {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  taskId   String @db.Uuid
+  actorId  String @db.Uuid
+
+  eventType String // CHECK_IN | CHECK_OUT | PHOTO | NOTE | STATUS_CHANGE
+  latitude  Float?
+  longitude Float?
+  accuracy  Float?
+  note      String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  task   FieldTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor  User      @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, taskId, createdAt])
+  @@map("field_task_events")
+}
+
+// =============================================================================
+//  FINANCE
+// =============================================================================
+
+model Invoice {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @db.Uuid
+  clientId String  @db.Uuid
+  orderId  String? @db.Uuid
+
+  invoiceNumber String
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotal    Decimal @default(0) @db.Decimal(14, 2)
+  discount    Decimal @default(0) @db.Decimal(14, 2)
+  taxAmount   Decimal @default(0) @db.Decimal(14, 2)
+  totalAmount Decimal @default(0) @db.Decimal(14, 2)
+  paidAmount  Decimal @default(0) @db.Decimal(14, 2)
+  /// يُعاد حسابه داخل معاملة عند كل دفعة: totalAmount - paidAmount
+  remainingAmount Decimal @default(0) @db.Decimal(14, 2)
+
+  issueDate DateTime @default(now())
+  dueDate   DateTime
+  notes     String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  order  ServiceOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, clientId])
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @db.Uuid
+  invoiceId String @db.Uuid
+
+  description String
+  quantity    Decimal @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(14, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, invoiceId])
+  @@map("invoice_items")
+}
+
+/// دفعة — سجل مالي append-only، لا حذف ولا soft delete
+model Payment {
+  id           String @id @default(uuid()) @db.Uuid
+  tenantId     String @db.Uuid
+  invoiceId    String @db.Uuid
+  receivedById String @db.Uuid
+
+  amount        Decimal       @db.Decimal(14, 2)
+  paymentMethod PaymentMethod @default(CASH)
+  reference     String? // رقم التحويل / الشيك
+  paymentDate   DateTime      @default(now())
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receivedBy User    @relation("PaymentReceivedBy", fields: [receivedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, paymentDate])
+  @@map("payments")
+}
+
+model ExpenseCategory {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @db.Uuid
+  name     String
+  isActive Boolean @default(true)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@unique([tenantId, name])
+  @@map("expense_categories")
+}
+
+model Expense {
+  id           String  @id @default(uuid()) @db.Uuid
+  tenantId     String  @db.Uuid
+  categoryId   String? @db.Uuid
+  recordedById String  @db.Uuid
+  /// الموظف الذي صُرف له المبلغ (قد يختلف عن المُسجِّل)
+  attributedToId String? @db.Uuid
+
+  voucherNumber String
+  description   String
+  amount        Decimal       @db.Decimal(14, 2)
+  paymentMethod PaymentMethod @default(CASH)
+  expenseDate   DateTime      @default(now())
+  receiptKey    String? // صورة الإيصال
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category     ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recordedBy   User             @relation("ExpenseRecordedBy", fields: [recordedById], references: [id], onDelete: Cascade)
+  attributedTo User?            @relation("ExpenseAttributedTo", fields: [attributedToId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, voucherNumber])
+  @@index([tenantId, expenseDate])
+  @@index([tenantId, categoryId])
+  @@map("expenses")
+}
+
+/// دفتر أستاذ العميل — كل فاتورة/دفعة تُنتج قيداً
+model LedgerEntry {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  clientId String @db.Uuid
+
+  direction   LedgerDirection
+  amount      Decimal         @db.Decimal(14, 2)
+  description String
+  /// مصدر القيد للتتبع العكسي
+  sourceType  String // INVOICE | PAYMENT | ADJUSTMENT
+  sourceId    String?
+  entryDate   DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, clientId, entryDate])
+  @@index([tenantId, sourceType, sourceId])
+  @@map("ledger_entries")
+}
+
+// =============================================================================
+//  NOTIFICATIONS & WHATSAPP
+// =============================================================================
+
+model NotificationTemplate {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+
+  event   NotificationEvent
+  channel NotificationChannel
+  name    String
+  subject String?
+  /// نص الرسالة بمتغيرات: "نذكركم بتجديد السجل التجاري بتاريخ {{expiryDate}}"
+  body     String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@unique([tenantId, event, channel])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @db.Uuid
+  templateId String? @db.Uuid
+  /// مستقبِل داخلي (موظف) أو عميل خارجي — أحدهما
+  recipientUserId   String? @db.Uuid
+  recipientClientId String? @db.Uuid
+
+  event   NotificationEvent
+  channel NotificationChannel
+  status  NotificationStatus  @default(PENDING)
+
+  title String
+  body  String
+
+  /// الكيان الذي أطلق التنبيه — للانتقال إليه من الواجهة
+  entityType String?
+  entityId   String?
+
+  scheduledFor DateTime  @default(now())
+  sentAt       DateTime?
+  readAt       DateTime?
+  failReason   String?
+  attempts     Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  user     User?                 @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  client   Client?               @relation(fields: [recipientClientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, recipientUserId, readAt])
+  @@index([tenantId, status, scheduledFor]) // مسح طابور الإرسال
+  @@index([tenantId, event])
+  @@map("notifications")
+}
+
+/// طبقة تكامل واتساب — سجل مستقل للتتبع وفوترة المزود
+model WhatsAppMessage {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @db.Uuid
+  clientId String? @db.Uuid
+
+  toNumber     String
+  templateName String?
+  body         String
+  /// معرف الرسالة لدى المزود (Meta / Twilio)
+  providerId String?
+  status     NotificationStatus @default(PENDING)
+  failReason String?
+  sentAt     DateTime?
+  createdAt  DateTime           @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([tenantId, clientId])
+  @@index([providerId])
+  @@map("whatsapp_messages")
+}
+
+// =============================================================================
+//  AI ASSISTANT
+// =============================================================================
+
+/// سجل استعلامات المساعد — للتدقيق وضمان تطبيق الصلاحيات
+model AiQueryLog {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  userId   String @db.Uuid
+
+  question String
+  /// الأداة/الاستعلام الذي نفّذه المساعد بعد التحقق من الصلاحية
+  resolvedTool String?
+  answer       String?
+  /// الصلاحيات التي فُحصت قبل التنفيذ
+  permissionsChecked String[] @default([])
+  denied             Boolean  @default(false)
+  denyReason         String?
+  latencyMs          Int?
+  createdAt          DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, createdAt])
+  @@map("ai_query_logs")
+}

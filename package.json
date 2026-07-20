@@ -1,0 +1,23 @@
+{
+  "name": "saas-office-erp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "pnpm --filter database build && pnpm --filter types build && pnpm --filter api build && pnpm --filter web build",
+    "db:generate": "pnpm --filter database generate",
+    "db:push": "pnpm --filter database push",
+    "db:seed": "pnpm --filter database seed"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

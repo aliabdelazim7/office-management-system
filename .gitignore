@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Prisma local databases
+packages/database/prisma/*.db
+packages/database/prisma/*.db-journal
+
+# Uploads / local storage
+storage/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+.nyc_output/
+
+# Reference clone — analysed for architecture, not part of the product
+reference_educenter/
