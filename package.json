@@ -5,17 +5,11 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "build": "pnpm --filter database build && pnpm --filter types build && pnpm --filter api build && pnpm --filter web build",
-    "db:generate": "pnpm --filter database generate",
-    "db:push": "pnpm --filter database push",
-    "db:seed": "pnpm --filter database seed"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "prisma"
-    ]
+    "postinstall": "pnpm --filter @saas/database generate",
+    "build": "pnpm --filter @saas/database generate && pnpm --filter @saas/types build && pnpm --filter api build && pnpm --filter web build",
+    "db:generate": "pnpm --filter @saas/database generate",
+    "db:push": "pnpm --filter @saas/database push",
+    "db:seed": "pnpm --filter @saas/database seed"
   },
   "devDependencies": {
     "typescript": "^5.3.3"
