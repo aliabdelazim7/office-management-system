@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  // The seed is a standalone script run through ts-node, never imported by the
+  // API, so it stays out of the published build.
+  "exclude": ["node_modules", "dist", "src/seed.ts"]
+}

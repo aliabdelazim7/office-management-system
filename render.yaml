@@ -1,0 +1,86 @@
+# =============================================================================
+#  Render Blueprint — Office ERP API
+# =============================================================================
+#  Deploys the NestJS API only. The Next.js frontend goes to Vercel, whose
+#  Root Directory must be set to `apps/web` (see README).
+#
+#  The database is Supabase, not a Render Postgres instance, so DATABASE_URL
+#  and DIRECT_URL are supplied manually — `sync: false` makes Render prompt for
+#  them instead of inventing a value.
+#
+#  Migrations run in the build step. If `prisma/migrations/` is empty the build
+#  fails loudly rather than starting an API against a schemaless database.
+# =============================================================================
+
+services:
+  - type: web
+    name: office-erp-api
+    runtime: node
+    plan: free
+    region: frankfurt # closest Render region to Egypt
+    branch: main
+
+    buildCommand: >-
+      corepack enable &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @saas/database generate &&
+      pnpm --filter @saas/database migrate:deploy &&
+      pnpm --filter api build
+
+    startCommand: node apps/api/dist/main.js
+
+    healthCheckPath: /api/v1/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: API_PORT
+        # Render injects PORT; the app reads API_PORT, so bridge them.
+        fromService:
+          type: web
+          name: office-erp-api
+          property: port
+
+      - key: API_PREFIX
+        value: api/v1
+
+      # --- Supabase: paste both. Pooled (6543) for the app, direct (5432)
+      #     for migrations, which cannot run through a transaction pooler.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      # --- Secrets Render generates and stores; never in the repo.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 30d
+
+      - key: AUTH_MAX_FAILED_ATTEMPTS
+        value: "5"
+      - key: AUTH_LOCKOUT_MINUTES
+        value: "15"
+
+      # --- Set to your Vercel domain once deployed. Never "*": the API sends
+      #     credentials cross-origin.
+      - key: CORS_ORIGINS
+        sync: false
+
+      - key: THROTTLE_TTL_SECONDS
+        value: "60"
+      - key: THROTTLE_LIMIT
+        value: "120"
+      - key: THROTTLE_AUTH_LIMIT
+        value: "10"
+
+      - key: STORAGE_DRIVER
+        value: local
+      - key: UPLOAD_MAX_BYTES
+        value: "10485760"
