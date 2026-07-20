@@ -132,6 +132,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@saas/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@saas/types':
         specifier: workspace:*
         version: link:../../packages/types

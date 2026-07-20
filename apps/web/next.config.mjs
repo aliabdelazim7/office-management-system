@@ -9,16 +9,13 @@ const monorepoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const nextConfig = {
   reactStrictMode: true,
 
-  // `@saas/types` ships TypeScript source rather than a build artifact, so Next
-  // has to compile it alongside the app.
-  transpilePackages: ['@saas/types'],
+  // Transpile workspace packages
+  transpilePackages: ['@saas/types', '@saas/database'],
 
   // The monorepo root, not apps/web, is what Next should trace files from.
-  // Without this it guesses, and on a pnpm workspace it guesses wrong.
   outputFileTracingRoot: monorepoRoot,
 
   eslint: {
-    // Linting runs in CI, not as a deploy gate.
     ignoreDuringBuilds: true,
   },
 

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@saas/types": "workspace:*",
+    "@saas/database": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
