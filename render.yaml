@@ -1,15 +1,14 @@
 # =============================================================================
-#  Render Blueprint — Office ERP API
+#  Render Blueprint - Office ERP API (NestJS)
 # =============================================================================
-#  Deploys the NestJS API only. The Next.js frontend goes to Vercel, whose
-#  Root Directory must be set to `apps/web` (see README).
+#  Deploys the API only. The Next.js frontend goes to Vercel with its Root
+#  Directory set to apps/web.
 #
-#  The database is Supabase, not a Render Postgres instance, so DATABASE_URL
-#  and DIRECT_URL are supplied manually — `sync: false` makes Render prompt for
-#  them instead of inventing a value.
+#  The database is Supabase, so DATABASE_URL and DIRECT_URL are supplied by
+#  hand; sync:false makes Render prompt for them rather than invent a value.
 #
-#  Migrations run in the build step. If `prisma/migrations/` is empty the build
-#  fails loudly rather than starting an API against a schemaless database.
+#  Migrations run during build. If prisma/migrations is empty the build fails
+#  loudly instead of starting an API against a schemaless database.
 # =============================================================================
 
 services:
@@ -17,38 +16,45 @@ services:
     name: office-erp-api
     runtime: node
     plan: free
-    region: frankfurt # closest Render region to Egypt
+    region: frankfurt
     branch: main
 
+    # Deliberately no `corepack enable`: Render's image already ships pnpm at
+    # /usr/bin/pnpm on a read-only filesystem, so corepack aborts with
+    # "EROFS: read-only file system, unlink '/usr/bin/pnpm'" while trying to
+    # replace that symlink. npx runs a pinned pnpm without touching /usr/bin.
     buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @saas/database generate &&
-      pnpm --filter @saas/database migrate:deploy &&
-      pnpm --filter api build
+      npx --yes pnpm@10 install --frozen-lockfile &&
+      npx --yes pnpm@10 --filter @saas/database generate &&
+      npx --yes pnpm@10 --filter @saas/database migrate:deploy &&
+      npx --yes pnpm@10 --filter api build
 
     startCommand: node apps/api/dist/main.js
 
     healthCheckPath: /api/v1/health
 
     envVars:
+      # Pinned. `engines: >=20` let Render install Node 26, which is far ahead
+      # of what Nest 10 and Prisma 5 are tested against.
+      - key: NODE_VERSION
+        value: "22.11.0"
+
       - key: NODE_ENV
         value: production
 
-      # No API_PORT here on purpose: Render injects PORT, and the config layer
-      # prefers PORT over API_PORT precisely so the platform stays in control.
-
+      # No API_PORT here: Render injects PORT, and the config layer prefers
+      # PORT precisely so the platform stays in control of the binding.
       - key: API_PREFIX
         value: api/v1
 
-      # --- Supabase: paste both. Pooled (6543) for the app, direct (5432)
-      #     for migrations, which cannot run through a transaction pooler.
+      # Supabase. Pooled (6543) for the app, session pooler (5432) for
+      # migrations, which cannot run through a transaction pooler.
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
         sync: false
 
-      # --- Secrets Render generates and stores; never in the repo.
+      # Generated and stored by Render; never present in the repository.
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -64,8 +70,8 @@ services:
       - key: AUTH_LOCKOUT_MINUTES
         value: "15"
 
-      # --- Set to your Vercel domain once deployed. Never "*": the API sends
-      #     credentials cross-origin.
+      # Set to the Vercel domain once deployed. Never "*": the API sends
+      # credentials cross-origin.
       - key: CORS_ORIGINS
         sync: false
 

@@ -9,8 +9,10 @@ const monorepoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const nextConfig = {
   reactStrictMode: true,
 
-  // Transpile workspace packages
-  transpilePackages: ['@saas/types', '@saas/database'],
+  // Only @saas/types. The web app must never pull in @saas/database: that
+  // would bundle Prisma into the frontend and, worse, make an unscoped client
+  // reachable from code that has no tenant context.
+  transpilePackages: ['@saas/types'],
 
   // The monorepo root, not apps/web, is what Next should trace files from.
   outputFileTracingRoot: monorepoRoot,
