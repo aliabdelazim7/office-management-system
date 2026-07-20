@@ -5,7 +5,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Auto-detect environment variables for Postgres / Supabase
+// Auto-detect environment variables for Supabase (Project: qoichebalcttuulbodtt)
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://qoichebalcttuulbodtt.supabase.co';
+process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaWNoZWJhbGN0dHV1bGJvZHR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDI1NDQsImV4cCI6MjEwMDExODU0NH0.u5T-T5gGBO8Bk2W4PD8lG4L-x_FSkheY4pfRvqr-Bwg';
+
 if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL =
     process.env.POSTGRES_PRISMA_URL ||
@@ -26,7 +29,7 @@ try {
 app.get('/api/v1/health', (req, res) => {
   res.json({
     status: 'ok',
-    server: 'Office ERP Standalone Backend API (Vercel Ready)',
+    server: 'Office ERP Standalone Backend API (Supabase Project: qoichebalcttuulbodtt)',
     timestamp: new Date().toISOString(),
   });
 });
