@@ -118,7 +118,7 @@ export class AuthService {
       { id: user.id, tenantId: user.tenantId, role: user.role },
       meta,
     );
-    const permissions = await this.rbac.getPermissionsFor(user.tenantId, user.role);
+    const permissions = await this.rbac.getEffectivePermissions(user.tenantId, user.id, user.role);
 
     await this.writeAudit(user.tenantId, user.id, AuditAction.LOGIN, 'User', user.id, 'تسجيل دخول ناجح', meta);
 
@@ -227,7 +227,7 @@ export class AuthService {
       { id: owner.id, tenantId: tenant.id, role: owner.role },
       meta,
     );
-    const permissions = await this.rbac.getPermissionsFor(tenant.id, owner.role);
+    const permissions = await this.rbac.getEffectivePermissions(tenant.id, owner.id, owner.role);
 
     await this.writeAudit(tenant.id, owner.id, AuditAction.CREATE, 'Tenant', tenant.id, `إنشاء مكتب: ${tenant.name}`, meta);
 
@@ -277,7 +277,7 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('الحساب غير موجود');
 
-    const permissions = await this.rbac.getPermissionsFor(tenantId, role);
+    const permissions = await this.rbac.getEffectivePermissions(tenantId, userId, role);
     return { ...user, permissions: [...permissions] };
   }
 

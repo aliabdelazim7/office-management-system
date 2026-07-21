@@ -96,7 +96,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new ForbiddenException('حساب المكتب موقوف');
     }
 
-    const permissions = await this.rbac.getPermissionsFor(user.tenantId, user.role);
+    const permissions = await this.rbac.getEffectivePermissions(user.tenantId, user.id, user.role);
 
     const tenantContext: TenantContext = {
       tenantId: user.tenantId,

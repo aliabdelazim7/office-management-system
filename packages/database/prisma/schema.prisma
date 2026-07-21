@@ -242,6 +242,7 @@ model Tenant {
   refreshTokens         RefreshToken[]
   invitations           Invitation[]
   rolePermissions       RolePermission[]
+  userPermissions       UserPermission[]
   auditLogs             AuditLog[]
   sequences             NumberSequence[]
   clients               Client[]
@@ -325,6 +326,8 @@ model User {
   attributedExpenses Expense[]          @relation("ExpenseAttributedTo")
   notifications      Notification[]     @relation("NotificationRecipient")
   aiQueryLogs        AiQueryLog[]
+  permissionOverrides UserPermission[]  @relation("UserPermissionSubject")
+  permissionsGranted  UserPermission[]  @relation("UserPermissionGrantor")
 
   /// البريد فريد داخل المكتب فقط — نفس البريد قد يعمل في مكتبين مختلفين
   @@unique([tenantId, email])
@@ -388,6 +391,7 @@ model Permission {
   sortOrder   Int     @default(0)
 
   rolePermissions RolePermission[]
+  userPermissions UserPermission[]
 
   @@index([groupKey])
   @@map("permissions")
@@ -407,6 +411,31 @@ model RolePermission {
   @@unique([tenantId, role, permissionCode])
   @@index([tenantId, role])
   @@map("role_permissions")
+}
+
+/// استثناء صلاحية لشخص بعينه، فوق ما يمنحه دوره.
+///
+/// الصلاحيات الأساسية تأتي من الدور (RolePermission). هذا الجدول يسمح بمنح
+/// موظف صلاحية إضافية أو سحب واحدة منه دون تغيير الدور لكل من يحمله.
+/// `granted = false` سحب صريح ويغلب على منح الدور.
+model UserPermission {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  userId         String   @db.Uuid
+  permissionCode String
+  granted        Boolean
+  grantedById    String?  @db.Uuid
+  note           String?
+  createdAt      DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User       @relation("UserPermissionSubject", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+  grantedBy  User?      @relation("UserPermissionGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, permissionCode])
+  @@index([tenantId, userId])
+  @@map("user_permissions")
 }
 
 /// عدّاد تسلسلي لكل مكتب — يُحدَّث داخل معاملة، لا COUNT(*)+1

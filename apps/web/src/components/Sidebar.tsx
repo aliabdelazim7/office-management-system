@@ -4,62 +4,78 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  Building2,
-  GitPullRequest,
-  UserCheck,
-  Wallet,
-  ShieldAlert,
   Building,
+  Building2,
   CheckCircle2,
   ChevronLeft,
+  FileText,
+  GitPullRequest,
+  LayoutDashboard,
+  ShieldAlert,
+  UserCheck,
+  Users,
+  UsersRound,
+  Wallet,
 } from 'lucide-react';
 import { useAuthStore } from '../lib/store';
 
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'المالك',
+  MANAGER: 'المدير',
+  ACCOUNTANT: 'المحاسب',
+  EMPLOYEE: 'الموظف',
+  VIEWER: 'المراقب',
+};
+
+/**
+ * Each link declares the permission it needs, so the sidebar shows only what
+ * the signed-in person can actually open. This is presentation, not access
+ * control — every one of these screens is enforced again at the API.
+ */
+const NAV_ITEMS: Array<{ label: string; href: string; icon: typeof Users; permission?: string }> = [
+  { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
+  { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users, permission: 'client.view' },
+  { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText, permission: 'document.view' },
+  { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2, permission: 'gov.view' },
+  { label: 'إدارة الخدمات والمسارات', href: '/dashboard/services', icon: GitPullRequest, permission: 'service.view' },
+  { label: 'فريق العمل والصلاحيات', href: '/dashboard/team', icon: UsersRound, permission: 'user.view' },
+  { label: 'المهام الميدانية وتتبع GPS', href: '/dashboard/hr-gps', icon: UserCheck, permission: 'field.view_own' },
+  { label: 'الإدارة المالية والمقبوضات', href: '/dashboard/finance', icon: Wallet, permission: 'invoice.view' },
+  { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.view' },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, tenant } = useAuthStore();
+  const { user, permissions } = useAuthStore();
 
-  const navItems = [
-    { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users },
-    { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText },
-    { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2 },
-    { label: 'إدارة الخدمات والمسارات (Workflow)', href: '/dashboard/services', icon: GitPullRequest },
-    { label: 'فريق العمل وتتبع الـ GPS الميداني', href: '/dashboard/hr-gps', icon: UserCheck },
-    { label: 'الإدارة المالية والمقبوضات (Finance)', href: '/dashboard/finance', icon: Wallet },
-    { label: 'سجّلات التدقيق والأمان (Audit Logs)', href: '/dashboard/audit-logs', icon: ShieldAlert },
-  ];
+  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.has(item.permission));
 
   return (
     <aside className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-screen sticky top-0 z-40">
-      {/* Workspace Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center space-x-3 space-x-reverse">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+      <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 shrink-0">
           <Building className="w-5 h-5" />
         </div>
         <div className="flex-1 overflow-hidden">
-          <h2 className="text-sm font-bold text-slate-100 truncate">{tenant?.name || 'مكتب النخبة ERP'}</h2>
+          <h2 className="text-sm font-bold text-slate-100 truncate">{user?.tenant.name ?? '—'}</h2>
           <span className="text-xs text-sky-400 font-medium flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            نظام موثق • {tenant?.subdomain}
+            <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span className="truncate" dir="ltr">
+              {user?.tenant.slug}
+            </span>
           </span>
         </div>
       </div>
 
-      {/* Role Badge Indicator */}
       <div className="mx-4 my-3 p-2.5 rounded-lg bg-slate-800/70 border border-slate-700/50 flex items-center justify-between text-xs">
-        <span className="text-slate-400 font-medium">الصلاحية الحالية:</span>
+        <span className="text-slate-400 font-medium">الدور الحالي:</span>
         <span className="px-2 py-0.5 rounded font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">
-          {user?.role || 'OWNER'}
+          {ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? '—'}
         </span>
       </div>
 
-      {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
@@ -73,24 +89,25 @@ export default function Sidebar() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
               </div>
-              {isActive && <ChevronLeft className="w-4 h-4 text-white/80" />}
+              {isActive && <ChevronLeft className="w-4 h-4 text-white/80 shrink-0" />}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer User Info */}
       <div className="p-4 border-t border-slate-800 bg-slate-950/40">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sky-400 text-sm">
-            {user?.name?.charAt(0) || 'أ'}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sky-400 text-sm shrink-0">
+            {user?.name?.trim().charAt(0) ?? '—'}
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-xs font-bold text-slate-200 truncate">{user?.name}</p>
-            <p className="text-[11px] text-slate-500 truncate">{user?.jobTitle}</p>
+            <p className="text-[11px] text-slate-500 truncate">
+              {user?.jobTitle ?? `${permissions.size} صلاحية`}
+            </p>
           </div>
         </div>
       </div>

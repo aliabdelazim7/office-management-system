@@ -8,7 +8,7 @@
 --
 --  Paste into the Supabase SQL Editor and run once, on a NEW project.
 --
---  Creates the schema, then registers them in _prisma_migrations so a later
+--  Creates 2 migrations, then registers them in _prisma_migrations so a later
 --  `prisma migrate deploy` recognises them as applied rather than trying to
 --  create everything a second time.
 --
@@ -1299,6 +1299,43 @@ ALTER TABLE "ai_query_logs" ADD CONSTRAINT "ai_query_logs_userId_fkey" FOREIGN K
 
 
 -- =============================================================================
+--  Migration: 20260721090000_user_permission_overrides
+-- =============================================================================
+
+-- CreateTable
+CREATE TABLE "user_permissions" (
+    "id" UUID NOT NULL,
+    "tenantId" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "permissionCode" TEXT NOT NULL,
+    "granted" BOOLEAN NOT NULL,
+    "grantedById" UUID,
+    "note" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "user_permissions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "user_permissions_tenantId_userId_idx" ON "user_permissions"("tenantId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_permissions_userId_permissionCode_key" ON "user_permissions"("userId", "permissionCode");
+
+-- AddForeignKey
+ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_permissionCode_fkey" FOREIGN KEY ("permissionCode") REFERENCES "permissions"("code") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_grantedById_fkey" FOREIGN KEY ("grantedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+
+-- =============================================================================
 --  Prisma migration history
 -- =============================================================================
 --  Tells Prisma these migrations are already applied. Omitting this is what
@@ -1319,6 +1356,12 @@ INSERT INTO "_prisma_migrations"
   ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
 VALUES
   (gen_random_uuid()::text, 'a2abc517463903f1698e07960aff615d978807d24d8a489605248d7797df3003', now(), '20260720130150_init', now(), 1)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO "_prisma_migrations"
+  ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+VALUES
+  (gen_random_uuid()::text, '429ff2c66a83682e87b0e1f30d8d47037fc292b6c5d8b242a9c3677ce1795d86', now(), '20260721090000_user_permission_overrides', now(), 1)
 ON CONFLICT DO NOTHING;
 
 

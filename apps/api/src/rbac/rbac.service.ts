@@ -30,9 +30,9 @@ export class RbacService implements OnModuleInit {
 
   /**
    * Reconcile the `permissions` table with the catalogue in code.
-   * Idempotent, so it is safe to run on every boot â€” this is deliberately not
-   * a migration, because a migration that mutates data drifts from a fresh
-   * `migrate deploy` and cannot be re-run.
+   * Idempotent, so it is safe on every boot — deliberately not a migration,
+   * because a migration that mutates data drifts from a fresh `migrate deploy`
+   * and cannot be re-run.
    */
   async syncCatalog(): Promise<void> {
     await this.prisma.$transaction(
@@ -53,7 +53,7 @@ export class RbacService implements OnModuleInit {
     );
 
     // Remove codes that no longer exist in the catalogue. Cascades to
-    // role_permissions so no tenant keeps a grant on a dead code.
+    // role_permissions and user_permissions so nothing keeps a dead grant.
     const removed = await this.prisma.client.permission.deleteMany({
       where: { code: { notIn: ALL_PERMISSION_CODES } },
     });
@@ -72,15 +72,16 @@ export class RbacService implements OnModuleInit {
     tx: Prisma.TransactionClient | PrismaClient = this.prisma.client,
   ): Promise<void> {
     const rows = (Object.entries(DEFAULT_ROLE_PERMISSIONS) as [UserRole, string[]][]).flatMap(
-      ([role, codes]) => codes.map((permissionCode) => ({ tenantId, role, permissionCode, granted: true })),
+      ([role, codes]) =>
+        codes.map((permissionCode) => ({ tenantId, role, permissionCode, granted: true })),
     );
 
     await tx.rolePermission.createMany({ data: rows, skipDuplicates: true });
   }
 
-  /** Effective permissions for a role within a tenant. */
-  async getPermissionsFor(tenantId: string, role: UserRole | string): Promise<ReadonlySet<string>> {
-    const key = `${tenantId}:${role}`;
+  /** Permissions a role grants within a tenant, before per-user overrides. */
+  async getRolePermissions(tenantId: string, role: UserRole | string): Promise<ReadonlySet<string>> {
+    const key = `role:${tenantId}:${role}`;
     const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.permissions;
@@ -94,9 +95,9 @@ export class RbacService implements OnModuleInit {
     let permissions: ReadonlySet<string>;
 
     if (rows.length === 0) {
-      // The tenant has no matrix yet (legacy row, or provisioning was
-      // interrupted). Fall back to the defaults for the role rather than
-      // locking the user out entirely â€” but never widen beyond the default.
+      // No matrix yet (provisioning interrupted, or a row predating it). Fall
+      // back to the role defaults rather than locking the user out — but never
+      // widen beyond the default.
       this.logger.warn(`No permission matrix for tenant ${tenantId} role ${role}; using defaults.`);
       permissions = new Set(DEFAULT_ROLE_PERMISSIONS[role as UserRole] ?? []);
     } else {
@@ -107,18 +108,69 @@ export class RbacService implements OnModuleInit {
     return permissions;
   }
 
-  /** Drop cached grants â€” call after any matrix mutation. */
-  invalidate(tenantId: string, role?: UserRole): void {
-    if (role) {
-      this.cache.delete(`${tenantId}:${role}`);
-      return;
+  /**
+   * Effective permissions for one person: what their role grants, plus their
+   * individual grants, minus their individual revokes.
+   *
+   * An explicit revoke beats a role grant. Without that, removing a single
+   * capability from a single employee would mean inventing a bespoke role for
+   * them — and a system that makes the careful action tedious gets the careless
+   * one instead.
+   *
+   * OWNER is never overridable: an office must not be able to lock itself out
+   * of its own administration.
+   */
+  async getEffectivePermissions(
+    tenantId: string,
+    userId: string,
+    role: UserRole | string,
+  ): Promise<ReadonlySet<string>> {
+    if (role === UserRole.OWNER) {
+      return new Set(ALL_PERMISSION_CODES);
     }
-    for (const key of this.cache.keys()) {
-      if (key.startsWith(`${tenantId}:`)) this.cache.delete(key);
+
+    const key = `user:${tenantId}:${userId}:${role}`;
+    const cached = this.cache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.permissions;
+    }
+
+    const [fromRole, overrides] = await Promise.all([
+      this.getRolePermissions(tenantId, role),
+      this.prisma.unsafeUnscoped.userPermission.findMany({
+        where: { tenantId, userId },
+        select: { permissionCode: true, granted: true },
+      }),
+    ]);
+
+    const effective = new Set(fromRole);
+    for (const o of overrides) {
+      if (o.granted) effective.add(o.permissionCode);
+      else effective.delete(o.permissionCode);
+    }
+
+    this.cache.set(key, { permissions: effective, expiresAt: Date.now() + CACHE_TTL_MS });
+    return effective;
+  }
+
+  /**
+   * Drop cached grants. A role change affects everyone holding that role, so
+   * their per-user entries are cleared too.
+   */
+  invalidate(tenantId: string, role?: UserRole): void {
+    for (const key of [...this.cache.keys()]) {
+      if (!key.includes(`:${tenantId}:`)) continue;
+      if (!role || key.endsWith(`:${role}`)) this.cache.delete(key);
     }
   }
 
-  /** The grouped catalogue, for rendering the admin permission matrix. */
+  invalidateUser(tenantId: string, userId: string): void {
+    for (const key of [...this.cache.keys()]) {
+      if (key.startsWith(`user:${tenantId}:${userId}:`)) this.cache.delete(key);
+    }
+  }
+
+  /** The catalogue, for rendering the admin permission matrix. */
   getCatalog() {
     return PERMISSION_CATALOG;
   }

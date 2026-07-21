@@ -1,122 +1,119 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Bell, Shield, UserCheck, CheckCircle, Smartphone } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, LogOut, Search, ShieldCheck, User } from 'lucide-react';
 import { useAuthStore } from '../lib/store';
-import { UserRole } from '@saas/types';
-import { API_BASE_URL } from '../lib/api';
 
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'المالك',
+  MANAGER: 'المدير',
+  ACCOUNTANT: 'المحاسب',
+  EMPLOYEE: 'الموظف',
+  VIEWER: 'المراقب',
+};
+
+/**
+ * The role selector that used to live here is gone.
+ *
+ * It called `switchDemoRole`, which rewrote the current user's role in browser
+ * state — so anyone could hand themselves OWNER and the UI would render the
+ * owner's screens. The API never honoured it, but a control that appears to
+ * grant access is worse than no control: it teaches people the wrong model of
+ * who can do what. The role shown below is whatever the server says it is.
+ */
 export default function Navbar() {
-  const { user, switchDemoRole } = useAuthStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any>(null);
-  const [isSearching, setIsSearching] = useState(false);
+  const router = useRouter();
+  const { user, permissions, logout } = useAuthStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setSearchResults(null);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`, {
-        headers: { Authorization: 'Bearer demo-jwt-token-active-session' },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data);
+  useEffect(() => {
+    function onClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
       }
-    } catch (e) {
-      console.log('Search fetch fallback');
-    } finally {
-      setIsSearching(false);
     }
-  };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  async function handleLogout() {
+    await logout();
+    router.replace('/login');
+  }
 
   return (
     <header className="h-16 glass-header sticky top-0 z-30 px-6 flex items-center justify-between">
-      {/* Global Search Bar */}
-      <div className="relative w-96">
-        <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="بحث شامل (اسم العميل، السجل، الضرائب، الفواتير)..."
-            className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl pr-10 pl-4 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
-          />
-        </div>
-
-        {/* Global Search Popup Results */}
-        {searchResults && (
-          <div className="absolute top-12 right-0 w-[480px] bg-slate-850 border border-slate-700 rounded-xl shadow-2xl p-4 z-50 text-xs space-y-3 max-h-96 overflow-y-auto">
-            <h4 className="font-bold text-sky-400 border-b border-slate-700 pb-2">نتائج البحث الشامل عن: "{searchQuery}"</h4>
-
-            {searchResults.clients?.length > 0 && (
-              <div>
-                <p className="font-bold text-slate-300 mb-1">العملاء والشركات ({searchResults.clients.length}):</p>
-                {searchResults.clients.map((c: any) => (
-                  <div key={c.id} className="p-2 rounded bg-slate-800 hover:bg-slate-750 flex justify-between mb-1">
-                    <span className="font-semibold text-slate-200">{c.name} ({c.companyName})</span>
-                    <span className="text-sky-400">{c.clientCode}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {searchResults.commercialRegisters?.length > 0 && (
-              <div>
-                <p className="font-bold text-slate-300 mb-1">السجلات التجارية ({searchResults.commercialRegisters.length}):</p>
-                {searchResults.commercialRegisters.map((cr: any) => (
-                  <div key={cr.id} className="p-2 rounded bg-slate-800 mb-1 flex justify-between">
-                    <span>{cr.tradeName}</span>
-                    <span className="text-emerald-400">سجل #{cr.registerNumber}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {searchResults.clients?.length === 0 && searchResults.commercialRegisters?.length === 0 && (
-              <p className="text-slate-400 text-center py-4">لم يتم العثور على نتائج تطابق البحث.</p>
-            )}
-          </div>
-        )}
+      <div className="relative w-96 max-w-full">
+        <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
+        <input
+          type="search"
+          disabled
+          className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl pr-10 pl-4 py-2 text-xs text-white placeholder:text-slate-500 disabled:opacity-60"
+          placeholder="البحث الشامل — يُفعّل مع وحدة العملاء"
+        />
       </div>
 
-      {/* Role Switcher & Header Controls */}
-      <div className="flex items-center space-x-4 space-x-reverse">
-        {/* Live RBAC Role Selector */}
-        <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
-          <Shield className="w-4 h-4 text-amber-400" />
-          <span className="text-xs text-slate-300 font-medium hidden md:inline">تبديل الدور للتجربة:</span>
-          <select
-            value={user?.role || UserRole.OWNER}
-            onChange={(e) => switchDemoRole(e.target.value as UserRole)}
-            className="bg-slate-900 border border-slate-700 text-sky-400 text-xs font-bold rounded-lg px-2 py-1 focus:outline-none"
-          >
-            <option value={UserRole.OWNER}>👑 Owner (المالك)</option>
-            <option value={UserRole.MANAGER}>💼 Manager (المدير)</option>
-            <option value={UserRole.ACCOUNTANT}>💰 Accountant (المحاسب)</option>
-            <option value={UserRole.EMPLOYEE}>📍 Employee (المندوب)</option>
-            <option value={UserRole.VIEWER}>👁️ Viewer (المراقب)</option>
-          </select>
-        </div>
+      <div className="flex items-center gap-3">
+        <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          {permissions.size} صلاحية
+        </span>
 
-        {/* Expiry Bell Alerts */}
-        <button className="relative p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition">
-          <Bell className="w-4 h-4 text-sky-400" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-            2
-          </span>
+        <button
+          type="button"
+          disabled
+          className="relative p-2 rounded-lg text-slate-400 disabled:opacity-60"
+          aria-label="التنبيهات"
+        >
+          <Bell className="w-4 h-4" />
         </button>
 
-        {/* Mobile PWA Badge */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20">
-          <Smartphone className="w-3.5 h-3.5" />
-          <span>PWA Ready</span>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 hover:bg-slate-800/60 transition-colors"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+              {user?.name?.trim().charAt(0) ?? <User className="w-4 h-4" />}
+            </div>
+            <div className="text-right hidden sm:block">
+              <p className="text-xs font-bold text-white leading-tight max-w-[10rem] truncate">
+                {user?.name ?? '—'}
+              </p>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                {ROLE_LABELS[user?.role ?? ''] ?? user?.role}
+              </p>
+            </div>
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute top-12 left-0 w-60 bg-slate-850 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-3.5 border-b border-slate-700">
+                <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+                <p className="text-[10px] text-slate-400 truncate" dir="ltr">
+                  {user?.email}
+                </p>
+                <p className="text-[10px] text-sky-400 mt-1.5">{user?.tenant.name}</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-3.5 py-3 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                تسجيل الخروج
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
