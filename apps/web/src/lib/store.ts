@@ -52,44 +52,7 @@ interface MeResponse {
   tenant: { id: string; name: string; slug: string; logoUrl?: string | null };
 }
 
-const DEFAULT_TENANT = {
-  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-  name: 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية',
-  slug: 'elite-consulting',
-};
 
-const DEMO_USERS: Record<string, { name: string; role: string; jobTitle: string; perms: string[] }> = {
-  'owner@elite.com': {
-    name: 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)',
-    role: 'OWNER',
-    jobTitle: 'المدير التنفيذي والمالك',
-    perms: ['*'],
-  },
-  'manager@elite.com': {
-    name: 'أ/ سارة محمود',
-    role: 'MANAGER',
-    jobTitle: 'مديرة التشغيل والعمليات',
-    perms: ['crm.read', 'crm.create', 'crm.update', 'doc.read', 'doc.upload', 'service.read', 'service.create', 'field.read'],
-  },
-  'accountant@elite.com': {
-    name: 'أ/ محمد طاهر',
-    role: 'ACCOUNTANT',
-    jobTitle: 'رئيس قسم الحسابات والضرائب',
-    perms: ['finance.read', 'finance.invoice.create', 'crm.read', 'doc.read'],
-  },
-  'employee@elite.com': {
-    name: 'أ/ خليل ابراهيم',
-    role: 'EMPLOYEE',
-    jobTitle: 'مسؤول علاقات حكومية ومندوب ميداني',
-    perms: ['field.read', 'field.assign', 'doc.read', 'service.read'],
-  },
-  'viewer@elite.com': {
-    name: 'أ/ علاء مرسي',
-    role: 'VIEWER',
-    jobTitle: 'مستشار قانوني خارجي (اطلاع)',
-    perms: ['crm.read', 'doc.read', 'service.read'],
-  },
-};
 
 const CUSTOM_USERS_KEY = 'office_erp_custom_users';
 
@@ -150,61 +113,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password, tenantSlug) => {
     const cleanEmail = email.trim().toLowerCase();
+    const data = await apiFetch<LoginResponse>('/auth/login', {
+      method: 'POST',
+      skipAuth: true,
+      body: JSON.stringify({ email: cleanEmail, password, ...(tenantSlug ? { tenantSlug } : {}) }),
+    });
 
-    try {
-      const data = await apiFetch<LoginResponse>('/auth/login', {
-        method: 'POST',
-        skipAuth: true,
-        body: JSON.stringify({ email: cleanEmail, password, ...(tenantSlug ? { tenantSlug } : {}) }),
-      });
-
-      get().setSessionData(data);
-      return;
-    } catch (err) {
-      // 1. Check custom user created by Admin directly
-      const customUsers = getStoredCustomUsers();
-      const matchCustom = customUsers.find(
-        (u) => u.email === cleanEmail && u.passwordHash === password,
-      );
-
-      if (matchCustom) {
-        tokenStore.set('mock-access-token', 'mock-refresh-token');
-        set({
-          user: {
-            id: matchCustom.id,
-            name: matchCustom.name,
-            email: matchCustom.email,
-            role: matchCustom.role,
-            jobTitle: matchCustom.jobTitle,
-            tenant: DEFAULT_TENANT,
-          },
-          permissions: new Set(matchCustom.permissions.length ? matchCustom.permissions : ['crm.read', 'doc.read']),
-          status: 'authenticated',
-        });
-        return;
-      }
-
-      // 2. Check demo pre-configured accounts (Password123!)
-      if (password === 'Password123!' && DEMO_USERS[cleanEmail]) {
-        const demo = DEMO_USERS[cleanEmail];
-        tokenStore.set('mock-access-token', 'mock-refresh-token');
-        set({
-          user: {
-            id: `usr-${cleanEmail}`,
-            name: demo.name,
-            email: cleanEmail,
-            role: demo.role,
-            jobTitle: demo.jobTitle,
-            tenant: DEFAULT_TENANT,
-          },
-          permissions: new Set(demo.perms),
-          status: 'authenticated',
-        });
-        return;
-      }
-
-      throw err;
-    }
+    get().setSessionData(data);
   },
 
   restore: async () => {
@@ -229,26 +144,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         status: 'authenticated',
       });
     } catch {
-      if (tokenStore.access === 'mock-access-token') {
-        const currentUserEmail = get().user?.email || 'owner@elite.com';
-        const demo = DEMO_USERS[currentUserEmail] || DEMO_USERS['owner@elite.com'];
-
-        set({
-          user: get().user || {
-            id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
-            name: demo.name,
-            email: currentUserEmail,
-            role: demo.role,
-            jobTitle: demo.jobTitle,
-            tenant: DEFAULT_TENANT,
-          },
-          permissions: new Set(demo.perms),
-          status: 'authenticated',
-        });
-      } else {
-        tokenStore.clear();
-        set({ status: 'anonymous', user: null, permissions: new Set() });
-      }
+      tokenStore.clear();
+      set({ status: 'anonymous', user: null, permissions: new Set() });
     }
   },
 

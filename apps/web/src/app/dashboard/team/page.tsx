@@ -82,32 +82,6 @@ const STATUS_LABELS: Record<string, string> = {
   SUSPENDED: 'موقوف',
 };
 
-const MOCK_CATALOG: PermissionDef[] = [
-  { code: 'crm.read', groupKey: 'crm', groupLabel: 'إدارة العملاء', labelAr: 'عرض العملاء والكيانات', description: 'الاطلاع على بيانات العملاء والسجلات والبطاقات' },
-  { code: 'crm.create', groupKey: 'crm', groupLabel: 'إدارة العملاء', labelAr: 'إضافة عميل جديد', description: 'تسجيل شركة أو مؤسسة جديدة' },
-  { code: 'crm.update', groupKey: 'crm', groupLabel: 'إدارة العملاء', labelAr: 'تعديل بيانات عميل', description: 'تحديث البيانات والسجلات' },
-  { code: 'crm.delete', groupKey: 'crm', groupLabel: 'إدارة العملاء', labelAr: 'حذف عميل', description: 'أرشفة أو حذف ملف عميل' },
-  { code: 'doc.read', groupKey: 'documents', groupLabel: 'خزينة المستندات', labelAr: 'معاينة وتنزيل المستندات', description: 'قراءة وفتح الملفات الرسمية' },
-  { code: 'doc.upload', groupKey: 'documents', groupLabel: 'خزينة المستندات', labelAr: 'رفع مستند جديد', description: 'إضافة وثائق جديدة للخزينة' },
-  { code: 'service.read', groupKey: 'services', groupLabel: 'إدارة الخدمات والمسارات', labelAr: 'عرض الخدمات والمعاملات', description: 'متابعة سير المعاملات' },
-  { code: 'service.create', groupKey: 'services', groupLabel: 'إدارة الخدمات والمسارات', labelAr: 'فتح معاملة خدمة جديدة', description: 'تسجيل طلب خدمة جديد' },
-  { code: 'field.read', groupKey: 'field', groupLabel: 'التتبع الميداني والـ GPS', labelAr: 'عرض المهمات والخريطة', description: 'متابعة المندوبين والمأموريات' },
-  { code: 'field.assign', groupKey: 'field', groupLabel: 'التتبع الميداني والـ GPS', labelAr: 'تكليف بمأمورية ميدانية', description: 'توجيه مندوب لمأمورية رسمية' },
-  { code: 'finance.read', groupKey: 'finance', groupLabel: 'المالية والحسابات', labelAr: 'عرض الحسابات والفواتير', description: 'الاطلاع على الفواتير والمصروفات' },
-  { code: 'finance.invoice.create', groupKey: 'finance', groupLabel: 'المالية والحسابات', labelAr: 'إنشاء فاتورة', description: 'إصدار فواتير للعملاء' },
-  { code: 'user.read', groupKey: 'team', groupLabel: 'إدارة الفريق', labelAr: 'عرض الموظفين والأدوار', description: 'الاطلاع على قائمة الفريق' },
-  { code: 'user.invite', groupKey: 'team', groupLabel: 'إدارة الفريق', labelAr: 'دعوة موظف جديد', description: 'إنشاء رابط دعوة لموظف جديد' },
-  { code: 'permission.manage', groupKey: 'system', groupLabel: 'إعدادات النظام', labelAr: 'تعديل مصفوفة الصلاحيات', description: 'منح وسحب الصلاحيات المخصصة' },
-];
-
-const MOCK_MEMBERS: Member[] = [
-  { id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', name: 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)', email: 'owner@elite.com', role: 'OWNER', status: 'ACTIVE', jobTitle: 'المدير التنفيذي والمالك', overrideCount: 0, passwordHash: 'Password123!' },
-  { id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', name: 'أ/ سارة محمود', email: 'manager@elite.com', role: 'MANAGER', status: 'ACTIVE', jobTitle: 'مديرة العمليات والتشغيل', overrideCount: 2, passwordHash: 'Password123!' },
-  { id: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', name: 'أ/ محمد طاهر', email: 'accountant@elite.com', role: 'ACCOUNTANT', status: 'ACTIVE', jobTitle: 'رئيس قسم الحسابات والضرائب', overrideCount: 1, passwordHash: 'Password123!' },
-  { id: 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', name: 'أ/ خليل ابراهيم', email: 'employee@elite.com', role: 'EMPLOYEE', status: 'ACTIVE', jobTitle: 'مسؤول علاقات حكومية ومندوب ميداني', overrideCount: 0, passwordHash: 'Password123!' },
-  { id: 'f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', name: 'أ/ علاء مرسي', email: 'viewer@elite.com', role: 'VIEWER', status: 'ACTIVE', jobTitle: 'مستشار قانوني خارجي (اطلاع)', overrideCount: 0, passwordHash: 'Password123!' },
-];
-
 // --- page --------------------------------------------------------------------
 
 export default function TeamPage() {
@@ -150,8 +124,9 @@ export default function TeamPage() {
 
       setMembers(merged);
       setInvitations(inv);
-    } catch {
-      // Offline / Vercel fallback: guaranteed display of user list
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'تعذر تحميل بيانات أعضاء الفريق من الخادم';
+      setError(msg);
       const customUsers = getCustomUsers();
       const customMembers: Member[] = customUsers.map((u) => ({
         id: u.id,
@@ -163,10 +138,7 @@ export default function TeamPage() {
         overrideCount: u.permissions.length,
         passwordHash: u.passwordHash,
       }));
-      setCatalog(MOCK_CATALOG);
-
-      const existingEmails = new Set(MOCK_MEMBERS.map((m) => m.email.toLowerCase()));
-      setMembers([...MOCK_MEMBERS, ...customMembers.filter((c) => !existingEmails.has(c.email.toLowerCase()))]);
+      setMembers(customMembers);
       setInvitations([]);
     } finally {
       setLoading(false);
@@ -181,15 +153,9 @@ export default function TeamPage() {
     try {
       const detail = await apiFetch<MemberDetail>(`/team/members/${id}`);
       setEditing(detail);
-    } catch {
-      const target = members.find((m) => m.id === id) || MOCK_MEMBERS[1];
-      setEditing({
-        ...target,
-        rolePermissions: ['crm.read', 'doc.read', 'service.read', 'field.read'],
-        overrides: [{ permissionCode: 'finance.read', granted: true }],
-        effectivePermissions: ['crm.read', 'doc.read', 'service.read', 'field.read', 'finance.read'],
-        permissionsLocked: false,
-      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'تعذر فتح تفاصيل الموظف';
+      alert(msg);
     }
   }
 
@@ -492,7 +458,7 @@ function InviteModal({
   const [submitting, setSubmitting] = useState(false);
   const [createdUser, setCreatedUser] = useState<{ name: string; email: string; password: string; role: string; permsCount: number } | null>(null);
 
-  const groups = useMemo(() => groupPermissions(catalog.length ? catalog : MOCK_CATALOG), [catalog]);
+  const groups = useMemo(() => groupPermissions(catalog), [catalog]);
 
   function toggle(code: string) {
     setGrants((prev) => {
@@ -714,7 +680,7 @@ function PermissionsModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const groups = useMemo(() => groupPermissions(catalog.length ? catalog : MOCK_CATALOG), [catalog]);
+  const groups = useMemo(() => groupPermissions(catalog), [catalog]);
 
   function toggle(code: string) {
     setEffective((prev) => {
@@ -726,7 +692,7 @@ function PermissionsModal({
 
   const overrides = useMemo(
     () =>
-      (catalog.length ? catalog : MOCK_CATALOG)
+      catalog
         .filter((p) => effective.has(p.code) !== fromRole.has(p.code))
         .map((p) => ({ code: p.code, granted: effective.has(p.code) })),
     [catalog, effective, fromRole],

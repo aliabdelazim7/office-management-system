@@ -8,6 +8,31 @@
  * Refuses to run against production. Passwords are real bcrypt hashes, never
  * placeholder strings, and the credentials below exist only in development.
  */
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+function loadEnv(): void {
+  const candidates = [
+    resolve(__dirname, '../../../../.env'),
+    resolve(__dirname, '../../../.env'),
+    resolve(process.cwd(), '../../.env'),
+    resolve(process.cwd(), '.env'),
+  ];
+  for (const envPath of candidates) {
+    try {
+      const content = readFileSync(envPath, 'utf8');
+      for (const line of content.split('\n')) {
+        const match = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
+        if (match) process.env[match[1]] ??= match[2].trim().replace(/^"|"$/g, '');
+      }
+      if (process.env.DATABASE_URL) break;
+    } catch {
+      // ignore
+    }
+  }
+}
+loadEnv();
+
 import { LegalType, PrismaClient, SequenceKind, TenantStatus, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_CATALOG } from './permissions';

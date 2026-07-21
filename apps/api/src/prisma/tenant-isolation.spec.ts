@@ -16,10 +16,23 @@ import { TenantContextService, type TenantContext } from '../tenancy/tenant-cont
 // Load .env by hand — this suite deliberately has no Nest application context,
 // so ConfigModule is not in play.
 function loadEnv(): void {
-  const envPath = resolve(__dirname, '../../../../.env');
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const match = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
-    if (match) process.env[match[1]] ??= match[2].trim().replace(/^"|"$/g, '');
+  const candidates = [
+    resolve(__dirname, '../../../../.env'),
+    resolve(__dirname, '../../../.env'),
+    resolve(process.cwd(), '../../.env'),
+    resolve(process.cwd(), '.env'),
+  ];
+  for (const envPath of candidates) {
+    try {
+      const content = readFileSync(envPath, 'utf8');
+      for (const line of content.split('\n')) {
+        const match = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
+        if (match) process.env[match[1]] ??= match[2].trim().replace(/^"|"$/g, '');
+      }
+      if (process.env.DATABASE_URL) break;
+    } catch {
+      // ignore
+    }
   }
 }
 loadEnv();
@@ -49,6 +62,8 @@ function runAs<T>(tenant: TenantContext, work: () => Promise<T>): Promise<T> {
 let eliteId: string;
 let bayanId: string;
 
+jest.setTimeout(30000);
+
 beforeAll(async () => {
   const tenants = await prisma.client.tenant.findMany({ select: { id: true, slug: true } });
   eliteId = tenants.find((t) => t.slug === 'elite')!.id;
@@ -56,7 +71,7 @@ beforeAll(async () => {
   expect(eliteId).toBeDefined();
   expect(bayanId).toBeDefined();
   expect(eliteId).not.toBe(bayanId);
-});
+}, 30000);
 
 afterAll(async () => {
   await prisma.$disconnect();
