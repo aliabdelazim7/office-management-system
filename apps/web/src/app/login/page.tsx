@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building, Eye, EyeOff, Loader2, LogIn, ShieldCheck, TriangleAlert, Sparkles, Mail } from 'lucide-react';
+import { Building, Eye, EyeOff, Loader2, LogIn, ShieldCheck, TriangleAlert, Mail } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { ApiRequestError } from '@/lib/api';
 
@@ -48,17 +48,12 @@ export default function LoginPage() {
           setError(err.message);
         }
       } else {
-        console.warn('API login error, activating demo session fallback:', err);
-        router.replace('/dashboard');
+        setError(err instanceof Error ? err.message : 'تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً');
       }
     } finally {
       setSubmitting(false);
     }
   }
-
-  const handleDemoAccess = () => {
-    router.replace('/dashboard');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
@@ -169,15 +164,6 @@ export default function LoginPage() {
                 تسجيل الدخول
               </>
             )}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDemoAccess}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 rounded-xl py-2.5 text-xs flex items-center justify-center gap-2 transition"
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            الدخول التجريبي المباشر للأدمن (Demo Mode)
           </button>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1">
