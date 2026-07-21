@@ -38,14 +38,38 @@ const envSchema = z.object({
 
 export type AppConfig = ReturnType<typeof loadConfiguration>;
 
+/**
+ * Maps the variable names hosting integrations inject onto the ones Prisma
+ * expects.
+ *
+ * The Supabase and Vercel Postgres integrations set POSTGRES_* and never
+ * DATABASE_URL, so without this the app refuses to boot on a project that is
+ * otherwise correctly wired. Done here, immediately before validation, rather
+ * than at some module's import time — relying on import order for something the
+ * whole process depends on is a bug waiting for an unrelated refactor.
+ */
+function applyPlatformAliases(): void {
+  process.env.DATABASE_URL ||= process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || '';
+
+  process.env.DIRECT_URL ||= process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL || '';
+}
+
 export function loadConfiguration() {
+  applyPlatformAliases();
+
   const parsed = envSchema.safeParse(process.env);
 
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
       .join('\n');
-    throw new Error(`Invalid environment configuration:\n${issues}`);
+    throw new Error(
+      `Invalid environment configuration:\n${issues}\n\n` +
+        'Generate the JWT secrets with:\n' +
+        "  node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"\n" +
+        'DATABASE_URL is also satisfied by POSTGRES_PRISMA_URL or POSTGRES_URL\n' +
+        'from the Supabase / Vercel Postgres integration.',
+    );
   }
 
   const env = parsed.data;
