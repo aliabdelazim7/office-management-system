@@ -69,10 +69,10 @@ export default function ExecutiveDashboard() {
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   const kpiCards = [
-    { title: 'إجمالي العملاء والشركات', value: '48 عميل', change: '+12% هذا الشهر', icon: Users, accent: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-    { title: 'الإيرادات الشهرية المحصلة', value: '145,000 ج.م', change: '+18.5% نمو', icon: Wallet, accent: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    { title: 'مستندات تقترب من الانتهاء', value: '3 مستندات', change: 'يلزم التجديد خلال 30 يوم', icon: FileWarning, accent: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    { title: 'الخدمات المفتوحة والميدانية', value: '14 معاملة', change: '8 معاملات جارية الآن', icon: Clock, accent: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
+    { title: 'إجمالي العملاء والشركات', value: '48 عميل', change: '+12% هذا الشهر', icon: Users, accent: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+    { title: 'الإيرادات الشهرية المحصلة', value: '145,000 ج.م', change: '+18.5% نمو', icon: Wallet, accent: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+    { title: 'مستندات تقترب من الانتهاء', value: '3 مستندات', change: 'يلزم التجديد خلال 30 يوم', icon: FileWarning, accent: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+    { title: 'الخدمات المفتوحة والميدانية', value: '14 معاملة', change: '8 معاملات جارية الآن', icon: Clock, accent: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
   ];
 
   const expiringAlerts = [
@@ -89,12 +89,12 @@ export default function ExecutiveDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-[#14181f] border border-[#222733] shadow-subtle-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="enterprise-card p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
             مرحباً بك، {user?.name || 'د. أحمد عبد الفتاح'} 👋
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--text-muted)]">
             لوحة تحكم المنظومة — نظرة شاملة وفورية على المأموريات والمستندات والعمليات الميدانية والمالية.
           </p>
         </div>
@@ -103,7 +103,7 @@ export default function ExecutiveDashboard() {
           <button
             type="button"
             onClick={() => setAddModalOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-subtle-xs transition-colors"
+            className="btn-primary w-full sm:w-auto text-xs py-2.5"
           >
             <UserPlus className="w-4 h-4" />
             + إنشاء حساب موظف وتحديد الصلاحيات
@@ -111,9 +111,9 @@ export default function ExecutiveDashboard() {
 
           <Link
             href="/dashboard/documents"
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#1a202c] hover:bg-[#2d3748] text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-[#222733] transition-colors"
+            className="btn-secondary w-full sm:w-auto text-xs py-2.5"
           >
-            <FileCheck className="w-4 h-4 text-indigo-400" />
+            <FileCheck className="w-4 h-4 text-indigo-500" />
             استعراض المستندات والتجديدات
           </Link>
         </div>
@@ -126,14 +126,14 @@ export default function ExecutiveDashboard() {
           return (
             <div key={idx} className="enterprise-card p-5 rounded-2xl relative overflow-hidden">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-semibold text-slate-400">{card.title}</span>
+                <span className="text-xs font-semibold text-[var(--text-secondary)]">{card.title}</span>
                 <div className={`w-9 h-9 rounded-xl ${card.accent} border flex items-center justify-center`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
               <div className="mt-3">
-                <h3 className="text-2xl font-bold text-slate-100">{card.value}</h3>
-                <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1 mt-1">
+                <h3 className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</h3>
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3.5 h-3.5" />
                   {card.change}
                 </span>
@@ -147,12 +147,12 @@ export default function ExecutiveDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Left Column: Automatic Expiry Renewal Alerts Engine */}
         <div className="enterprise-card p-5 sm:p-6 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#222733] pb-3">
-            <h3 className="font-bold text-slate-100 flex items-center gap-2 text-xs sm:text-sm">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+            <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 text-xs sm:text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
               تنبيهات التجديد الآلية (Expiry Engine)
             </h3>
-            <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
               3 تنبيهات
             </span>
           </div>
@@ -163,22 +163,22 @@ export default function ExecutiveDashboard() {
                 key={idx}
                 className={`p-3.5 rounded-xl border flex flex-col gap-2 ${
                   alert.urgency === 'HIGH'
-                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
-                    : 'bg-[#1a202c] border-[#222733] text-slate-300'
+                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300'
+                    : 'bg-[var(--bg-canvas)] border-[var(--border-subtle)] text-[var(--text-secondary)]'
                 }`}
               >
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-white">{alert.type}: {alert.number}</span>
-                  <span className="font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px]">
+                  <span className="font-bold text-[var(--text-primary)]">{alert.type}: {alert.number}</span>
+                  <span className="font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px]">
                     متبقي {alert.days} يوم
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-slate-300">{alert.company}</p>
+                <p className="text-xs font-semibold text-[var(--text-secondary)]">{alert.company}</p>
                 <div className="flex justify-between items-center pt-1 text-[11px]">
-                  <span className="text-slate-400">تنبيه آلي مجهز للواتساب</span>
+                  <span className="text-[var(--text-muted)]">تنبيه آلي مجهز للواتساب</span>
                   <Link
                     href="/dashboard/documents"
-                    className="text-indigo-400 hover:underline font-bold flex items-center gap-1"
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold flex items-center gap-1"
                   >
                     بدء التجديد <ArrowUpRight className="w-3 h-3" />
                   </Link>
@@ -190,19 +190,19 @@ export default function ExecutiveDashboard() {
 
         {/* Right Column: Live Services Workflow & Operations */}
         <div className="lg:col-span-2 enterprise-card p-5 sm:p-6 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#222733] pb-3">
-            <h3 className="font-bold text-slate-100 flex items-center gap-2 text-xs sm:text-sm">
-              <FileCheck className="w-4 h-4 text-indigo-400" />
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+            <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 text-xs sm:text-sm">
+              <FileCheck className="w-4 h-4 text-indigo-500" />
               أحدث معاملات ومهمات المكتب الجارية
             </h3>
-            <Link href="/dashboard/services" className="text-xs text-indigo-400 font-bold hover:underline">
+            <Link href="/dashboard/services" className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
               عرض كافة الخدمات
             </Link>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
-              <thead className="bg-[#1a202c] text-slate-400 font-bold border-b border-[#222733]">
+              <thead className="bg-[var(--table-header-bg)] text-[var(--text-muted)] font-bold border-b border-[var(--border-subtle)]">
                 <tr>
                   <th className="p-3">رقم الخدمة</th>
                   <th className="p-3">اسم العميل والشركة</th>
@@ -212,19 +212,19 @@ export default function ExecutiveDashboard() {
                   <th className="p-3">المبلغ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#222733] text-slate-200 font-medium">
+              <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)] font-medium">
                 {recentServices.map((srv, idx) => (
-                  <tr key={idx} className="hover:bg-[#1a202c]/60 transition-colors">
-                    <td className="p-3 font-bold text-indigo-400">{srv.order}</td>
-                    <td className="p-3 font-bold text-white">{srv.client}</td>
-                    <td className="p-3 text-slate-300">{srv.service}</td>
-                    <td className="p-3 text-slate-400">{srv.staff}</td>
+                  <tr key={idx} className="hover:bg-[var(--table-row-hover)] transition-colors">
+                    <td className="p-3 font-bold text-indigo-600 dark:text-indigo-400">{srv.order}</td>
+                    <td className="p-3 font-bold text-[var(--text-primary)]">{srv.client}</td>
+                    <td className="p-3 text-[var(--text-secondary)]">{srv.service}</td>
+                    <td className="p-3 text-[var(--text-muted)]">{srv.staff}</td>
                     <td className="p-3">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                         {srv.status === 'IN_PROGRESS' ? 'قيد التنفيذ الميداني' : 'معلقة'}
                       </span>
                     </td>
-                    <td className="p-3 font-bold text-emerald-400">{srv.amount}</td>
+                    <td className="p-3 font-bold text-emerald-600 dark:text-emerald-400">{srv.amount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -291,38 +291,38 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
     return (
       <Modal title="تم تفعيل حساب الموظف فوراً" onClose={onClose}>
         <div className="flex flex-col gap-4 text-xs">
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 space-y-1">
-            <p className="font-bold text-sm text-emerald-400">✓ الحساب فعال وجاهز للدخول الآن!</p>
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 space-y-1">
+            <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">✓ الحساب فعال وجاهز للدخول الآن!</p>
             <p>يمكن للموظف الدخول فوراً ببيانات الاعتماد التلاحمية التي قمت بتحديدها.</p>
           </div>
 
-          <div className="bg-[#101418] border border-[#222733] rounded-xl p-3.5 space-y-2 text-slate-200">
-            <div className="flex justify-between items-center border-b border-[#222733] pb-1.5">
-              <span className="text-slate-400">اسم الموظف:</span>
-              <strong className="text-white">{createdUser.name}</strong>
+          <div className="bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-xl p-3.5 space-y-2 text-[var(--text-primary)]">
+            <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-1.5">
+              <span className="text-[var(--text-muted)]">اسم الموظف:</span>
+              <strong className="text-[var(--text-primary)]">{createdUser.name}</strong>
             </div>
-            <div className="flex justify-between items-center border-b border-[#222733] pb-1.5">
-              <span className="text-slate-400">البريد الإلكتروني:</span>
-              <strong className="text-indigo-400 font-mono" dir="ltr">{createdUser.email}</strong>
+            <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-1.5">
+              <span className="text-[var(--text-muted)]">البريد الإلكتروني:</span>
+              <strong className="text-indigo-600 dark:text-indigo-400 font-mono" dir="ltr">{createdUser.email}</strong>
             </div>
-            <div className="flex justify-between items-center border-b border-[#222733] pb-1.5">
-              <span className="text-slate-400">كلمة المرور:</span>
-              <strong className="text-amber-400 font-mono" dir="ltr">{createdUser.password}</strong>
+            <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-1.5">
+              <span className="text-[var(--text-muted)]">كلمة المرور:</span>
+              <strong className="text-amber-600 dark:text-amber-400 font-mono" dir="ltr">{createdUser.password}</strong>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">الدور والصلاحيات:</span>
-              <strong className="text-white">{ROLE_LABELS[createdUser.role]} ({createdUser.permsCount} صلاحيات مخصصة)</strong>
+              <span className="text-[var(--text-muted)]">الدور والصلاحيات:</span>
+              <strong className="text-[var(--text-primary)]">{ROLE_LABELS[createdUser.role]} ({createdUser.permsCount} صلاحيات مخصصة)</strong>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-bold mb-1.5">نص بيانات الدخول (جاهز للنسخ والإرسال على واتساب أو إيميل):</label>
+            <label className="block text-[var(--text-primary)] font-bold mb-1.5">نص بيانات الدخول (جاهز للنسخ والإرسال على واتساب أو إيميل):</label>
             <textarea
               readOnly
               dir="rtl"
               rows={6}
               value={fullCredentialsText}
-              className="w-full bg-[#101418] border border-[#222733] rounded-xl p-3 text-slate-200 text-xs font-mono focus:outline-none"
+              className="enterprise-input font-mono"
             />
           </div>
 
@@ -339,7 +339,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block text-slate-300 mb-1 font-bold">اسم الموظف *</label>
+            <label className="block text-[var(--text-primary)] mb-1 font-bold">اسم الموظف *</label>
             <input
               required
               minLength={3}
@@ -350,7 +350,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-slate-300 mb-1 font-bold">البريد الإلكتروني (اسم المستخدم) *</label>
+            <label className="block text-[var(--text-primary)] mb-1 font-bold">البريد الإلكتروني (اسم المستخدم) *</label>
             <input
               required
               type="email"
@@ -362,8 +362,8 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-slate-300 mb-1 font-bold flex items-center gap-1">
-              <Key className="w-3.5 h-3.5 text-amber-400" />
+            <label className="block text-[var(--text-primary)] mb-1 font-bold flex items-center gap-1">
+              <Key className="w-3.5 h-3.5 text-amber-500" />
               كلمة المرور المحددة *
             </label>
             <input
@@ -377,7 +377,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-slate-300 mb-1 font-bold">الدور الوظيفي *</label>
+            <label className="block text-[var(--text-primary)] mb-1 font-bold">الدور الوظيفي *</label>
             <select
               required
               value={form.role}
@@ -394,7 +394,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <label className="block text-slate-300 mb-1 font-bold text-xs">المسمى الوظيفي</label>
+          <label className="block text-[var(--text-primary)] mb-1 font-bold text-xs">المسمى الوظيفي</label>
           <input
             value={form.jobTitle}
             onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
@@ -403,21 +403,21 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        <div className="border-t border-[#222733] pt-3">
-          <p className="text-xs font-bold text-indigo-400 mb-1 flex items-center gap-1.5">
+        <div className="border-t border-[var(--border-subtle)] pt-3">
+          <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
             حدد الصلاحيات الخاصة التي يدخل بها {form.name || 'الموظف'}
           </p>
 
-          <div className="max-h-56 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-[#222733] rounded-xl p-3 bg-[#101418]">
+          <div className="max-h-56 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-[var(--border-subtle)] rounded-xl p-3 bg-[var(--bg-canvas)]">
             {groups.map((group) => (
               <div key={group.key}>
-                <p className="text-[11px] font-bold text-indigo-300 mb-1.5 border-b border-[#222733] pb-1">{group.label}</p>
+                <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-1.5 border-b border-[var(--border-subtle)] pb-1">{group.label}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {group.items.map((p) => (
                     <label
                       key={p.code}
-                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 border border-[#222733] bg-[#14181f] text-[11px] cursor-pointer hover:border-indigo-500 transition-colors"
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 border border-[var(--border-subtle)] bg-[var(--bg-surface-secondary)] text-[11px] cursor-pointer hover:border-indigo-500 transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -425,7 +425,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
                         onChange={() => toggle(p.code)}
                         className="accent-indigo-500 w-3.5 h-3.5"
                       />
-                      <span className="text-slate-200 font-medium">{p.labelAr}</span>
+                      <span className="text-[var(--text-primary)] font-medium">{p.labelAr}</span>
                     </label>
                   ))}
                 </div>
@@ -434,7 +434,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-[#222733]">
+        <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
           <button type="button" onClick={onClose} className="btn-secondary">
             إلغاء
           </button>
@@ -469,18 +469,18 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-[#0b0f14]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         role="dialog"
         aria-modal="true"
         className="enterprise-card w-full max-w-2xl rounded-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4 shadow-subtle-lg"
       >
-        <div className="flex items-center justify-between border-b border-[#222733] pb-3">
-          <h2 className="text-sm font-bold text-white">{title}</h2>
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+          <h2 className="text-sm font-bold text-[var(--text-primary)]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             aria-label="إغلاق"
           >
             <X className="w-4 h-4" />

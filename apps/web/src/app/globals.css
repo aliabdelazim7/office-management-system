@@ -7,25 +7,33 @@
 :root {
   --font-cairo: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Enterprise Semantic Tokens (Light Mode Defaults) */
+  /* Enterprise Semantic Design Tokens (Light Mode - Linear/Vercel/Stripe Standards) */
   --bg-canvas: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-secondary: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
   --border-subtle: #e2e8f0;
   --border-hover: #cbd5e1;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --input-bg: #f8fafc;
-  --button-sec-bg: #f1f5f9;
+  --input-bg: #ffffff;
+  --button-sec-bg: #f8fafc;
   --button-sec-text: #334155;
+  --table-header-bg: #f8fafc;
+  --table-row-hover: #f8fafc;
 }
 
 .dark {
-  /* Enterprise Semantic Tokens (Dark Mode Defaults - Linear / Stripe Style) */
+  /* Enterprise Semantic Design Tokens (Dark Mode - Linear/Vercel/Stripe Standards) */
   --bg-canvas: #0b0f14;
   --bg-surface: #101418;
   --bg-surface-secondary: #14181f;
+  --bg-card-hover: #1a202c;
+  --sidebar-bg: #101418;
+  --sidebar-border: #222733;
   --border-subtle: #222733;
   --border-hover: #333a48;
   --text-primary: #f3f4f6;
@@ -34,6 +42,8 @@
   --input-bg: #101418;
   --button-sec-bg: #1a202c;
   --button-sec-text: #e2e8f0;
+  --table-header-bg: #14181f;
+  --table-row-hover: #1a202c;
 }
 
 body {
@@ -97,7 +107,7 @@ body {
   border-radius: 0.75rem;
   padding: 0.625rem 1rem;
   display: inline-flex;
-  items-center: center;
+  align-items: center;
   gap: 0.5rem;
   transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -115,7 +125,7 @@ body {
   border-radius: 0.75rem;
   padding: 0.625rem 1rem;
   display: inline-flex;
-  items-center: center;
+  align-items: center;
   gap: 0.5rem;
   transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
 }
