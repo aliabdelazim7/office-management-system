@@ -28,6 +28,9 @@ const BCRYPT_ROUNDS = 12;
 interface Args {
   sqlOnly: boolean;
   withSchema: boolean;
+  demo: boolean;
+  demoRole: UserRole;
+  demoEmail: string;
   out: string | null;
   tenantName: string;
   slug: string;
@@ -48,6 +51,12 @@ function parseArgs(): Args {
     // to a working office. Splitting setup across several files that must run
     // in the right order is a reliable way to get a half-built database.
     withSchema: argv.includes('--with-schema'),
+    // A second account to hand to a client reviewing the system, so the owner
+    // never has to share their own credentials. Same MANAGER role by default;
+    // pass --demo-role VIEWER for read-only.
+    demo: argv.includes('--demo'),
+    demoRole: (get('demo-role', 'MANAGER') as UserRole),
+    demoEmail: get('demo-email', 'demo@example.com').toLowerCase(),
     // Writing the file here rather than redirecting the console keeps shell
     // noise out of it. A previous run piped stdout through PowerShell and the
     // resulting file ended with a stderr line, which Postgres then choked on.
@@ -77,7 +86,12 @@ function q(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-async function emitSql(args: Args, password: string, passwordHash: string): Promise<void> {
+async function emitSql(
+  args: Args,
+  password: string,
+  passwordHash: string,
+  demo?: { password: string; hash: string },
+): Promise<void> {
   const tenantId = randomUUID();
   const userId = randomUUID();
 
@@ -141,7 +155,23 @@ ${sequences}
 ) AS v(kind, prefix)
 WHERE t."slug" = ${q(args.slug)}
 ON CONFLICT ("tenantId", "kind") DO NOTHING;
-
+${
+  demo
+    ? `
+-- --- Review account ----------------------------------------------------------
+-- A separate login to hand to whoever is reviewing the system, so the owner
+-- never shares their own credentials. Delete it when the review is over:
+--     DELETE FROM "users" WHERE "email" = ${q(args.demoEmail)};
+INSERT INTO "users" ("id", "tenantId", "name", "email", "passwordHash", "role", "status",
+                     "jobTitle", "failedLoginAttempts", "createdAt", "updatedAt")
+SELECT gen_random_uuid(), t."id", 'حساب المراجعة', ${q(args.demoEmail)},
+       ${q(demo.hash)}, '${args.demoRole}', 'ACTIVE', 'مراجعة النظام', 0, now(), now()
+FROM "tenants" t
+WHERE t."slug" = ${q(args.slug)}
+ON CONFLICT ("tenantId", "email") DO NOTHING;
+`
+    : ''
+}
 COMMIT;
 `;
 
@@ -165,8 +195,17 @@ COMMIT;
   }
 
   console.log('\n--- credentials — shown once, not stored anywhere ---');
-  console.log(`  email:    ${args.email}`);
-  console.log(`  password: ${password}`);
+  console.log('\n  OWNER (yours, keep private)');
+  console.log(`    email:    ${args.email}`);
+  console.log(`    password: ${password}`);
+
+  if (demo) {
+    console.log(`\n  REVIEW ACCOUNT (${args.demoRole}) — safe to share`);
+    console.log(`    email:    ${args.demoEmail}`);
+    console.log(`    password: ${demo.password}`);
+    console.log('    delete it when the review is over — the SQL says how');
+  }
+
   console.log('\nSign in, then change the password from your profile.');
 }
 
@@ -244,8 +283,15 @@ async function main(): Promise<void> {
   const password = generatePassword();
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
+  const demo = args.demo
+    ? await (async () => {
+        const demoPassword = generatePassword();
+        return { password: demoPassword, hash: await bcrypt.hash(demoPassword, BCRYPT_ROUNDS) };
+      })()
+    : undefined;
+
   if (args.sqlOnly) {
-    await emitSql(args, password, passwordHash);
+    await emitSql(args, password, passwordHash, demo);
   } else {
     await insertDirectly(args, password, passwordHash);
   }
