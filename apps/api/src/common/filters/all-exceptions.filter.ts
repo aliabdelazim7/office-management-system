@@ -82,10 +82,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return { ...base, statusCode: HttpStatus.BAD_REQUEST, message: 'بيانات الطلب غير صالحة' };
     }
 
+    const isDev = process.env.NODE_ENV !== 'production';
+    const errorMsg = exception instanceof Error ? exception.message : String(exception);
+
     return {
       ...base,
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'حدث خطأ غير متوقع. تم تسجيل المشكلة',
+      message: isDev && errorMsg ? `خطأ في الخادم: ${errorMsg}` : 'حدث خطأ غير متوقع في الخادم',
+      details: isDev ? errorMsg : undefined,
     };
   }
 

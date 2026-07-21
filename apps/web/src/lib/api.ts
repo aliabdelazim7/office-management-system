@@ -96,7 +96,7 @@ export async function apiFetch<T = unknown>(
   try {
     response = await send();
   } catch {
-    throw new ApiRequestError(0, { statusCode: 0, message: 'تعذر الاتصال بالخادم' });
+    throw new ApiRequestError(0, { statusCode: 0, message: 'تعذر الاتصال بالخادم. يرجى التأكد من تشغيل الـ Backend API' });
   }
 
   if (response.status === 401 && !skipAuth && tokenStore.refresh) {
@@ -109,7 +109,7 @@ export async function apiFetch<T = unknown>(
       try {
         response = await send();
       } catch {
-        throw new ApiRequestError(0, { statusCode: 0, message: 'تعذر الاتصال بالخادم' });
+        throw new ApiRequestError(0, { statusCode: 0, message: 'تعذر الاتصال بالخادم. يرجى التأكد من تشغيل الـ Backend API' });
       }
     }
   }
@@ -121,7 +121,7 @@ export async function apiFetch<T = unknown>(
     } catch {
       body = {
         statusCode: response.status,
-        message: response.statusText || 'حدث خطأ غير متوقع في الخادم',
+        message: response.statusText || `خطأ استجابة من الخادم (${response.status})`,
       };
     }
     throw new ApiRequestError(response.status, body);
