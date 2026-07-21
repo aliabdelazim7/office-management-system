@@ -13,6 +13,8 @@ import {
   UserPlus,
   Users,
   X,
+  Key,
+  UserCog,
 } from 'lucide-react';
 import { apiFetch, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
@@ -36,6 +38,7 @@ interface Member {
   jobTitle?: string | null;
   lastLoginAt?: string | null;
   overrideCount: number;
+  passwordHash?: string;
 }
 
 interface MemberDetail extends Member {
@@ -99,16 +102,16 @@ const MOCK_CATALOG: PermissionDef[] = [
 ];
 
 const MOCK_MEMBERS: Member[] = [
-  { id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', name: 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)', email: 'owner@elite.com', role: 'OWNER', status: 'ACTIVE', jobTitle: 'المدير التنفيذي والمالك', overrideCount: 0 },
-  { id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', name: 'أ/ سارة محمود', email: 'manager@elite.com', role: 'MANAGER', status: 'ACTIVE', jobTitle: 'مديرة العمليات والتشغيل', overrideCount: 2 },
-  { id: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', name: 'أ/ محمد طاهر', email: 'accountant@elite.com', role: 'ACCOUNTANT', status: 'ACTIVE', jobTitle: 'رئيس قسم الحسابات والضرائب', overrideCount: 1 },
-  { id: 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', name: 'أ/ خليل ابراهيم', email: 'employee@elite.com', role: 'EMPLOYEE', status: 'ACTIVE', jobTitle: 'مسؤول علاقات حكومية ومندوب ميداني', overrideCount: 0 },
+  { id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', name: 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)', email: 'owner@elite.com', role: 'OWNER', status: 'ACTIVE', jobTitle: 'المدير التنفيذي والمالك', overrideCount: 0, passwordHash: 'Password123!' },
+  { id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', name: 'أ/ سارة محمود', email: 'manager@elite.com', role: 'MANAGER', status: 'ACTIVE', jobTitle: 'مديرة العمليات والتشغيل', overrideCount: 2, passwordHash: 'Password123!' },
+  { id: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', name: 'أ/ محمد طاهر', email: 'accountant@elite.com', role: 'ACCOUNTANT', status: 'ACTIVE', jobTitle: 'رئيس قسم الحسابات والضرائب', overrideCount: 1, passwordHash: 'Password123!' },
+  { id: 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', name: 'أ/ خليل ابراهيم', email: 'employee@elite.com', role: 'EMPLOYEE', status: 'ACTIVE', jobTitle: 'مسؤول علاقات حكومية ومندوب ميداني', overrideCount: 0, passwordHash: 'Password123!' },
 ];
 
 // --- page --------------------------------------------------------------------
 
 export default function TeamPage() {
-  const { user, can } = useAuthStore();
+  const { user, can, getCustomUsers } = useAuthStore();
 
   const [catalog, setCatalog] = useState<PermissionDef[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -129,21 +132,51 @@ export default function TeamPage() {
         apiFetch<PendingInvitation[]>('/team/invitations').catch(() => []),
       ]);
       setCatalog(cat);
-      setMembers(mem);
+
+      // Merge custom created users
+      const customUsers = getCustomUsers();
+      const customMembers: Member[] = customUsers.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: 'ACTIVE',
+        jobTitle: u.jobTitle || 'موظف مخصص',
+        overrideCount: u.permissions.length,
+        passwordHash: u.passwordHash,
+      }));
+
+      const existingEmails = new Set(mem.map((m) => m.email.toLowerCase()));
+      const merged = [...mem, ...customMembers.filter((c) => !existingEmails.has(c.email.toLowerCase()))];
+
+      setMembers(merged);
       setInvitations(inv);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 0) {
         // Offline preview fallback
+        const customUsers = getCustomUsers();
+        const customMembers: Member[] = customUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          status: 'ACTIVE',
+          jobTitle: u.jobTitle || 'موظف مخصص',
+          overrideCount: u.permissions.length,
+          passwordHash: u.passwordHash,
+        }));
         setCatalog(MOCK_CATALOG);
-        setMembers(MOCK_MEMBERS);
+
+        const existingEmails = new Set(MOCK_MEMBERS.map((m) => m.email.toLowerCase()));
+        setMembers([...MOCK_MEMBERS, ...customMembers.filter((c) => !existingEmails.has(c.email.toLowerCase()))]);
         setInvitations([]);
       } else {
-        setError(err instanceof ApiRequestError ? err.message : 'تعذر تحميل بيانات الفريق');
+        setError(err instanceof ApiRequestError ? err.message : 'تعذر تحميل بيانات المستخدمين');
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getCustomUsers]);
 
   useEffect(() => {
     void load();
@@ -177,11 +210,11 @@ export default function TeamPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-sky-400" />
-            فريق العمل والصلاحيات
+            <UserCog className="w-6 h-6 text-sky-400" />
+            إدارة المستخدمين والحسابات والصلاحيات
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            ادعُ موظفاً جديداً، حدد دوره، وامنحه صلاحيات مخصصة بعينها أو أرسل له رابط الدخول مباشرة.
+            أنشئ حساب الموظف مباشرة، حدد كلمة مروره ودوره والصلاحيات الخاصة به وشاركه بيانات الدخول فورياً.
           </p>
         </div>
 
@@ -189,10 +222,10 @@ export default function TeamPage() {
           <button
             type="button"
             onClick={() => setInviteOpen(true)}
-            className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-lg shadow-sky-600/30 transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-colors"
           >
             <UserPlus className="w-4 h-4" />
-            إضافة / دعوة موظف جديد
+            + إنشاء حساب مستخدم جديد
           </button>
         )}
       </header>
@@ -207,7 +240,7 @@ export default function TeamPage() {
       {loading ? (
         <div className="glass-card rounded-2xl border border-slate-800 p-12 flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-          <p className="text-xs text-slate-400">جارٍ تحميل قائمة الفريق والصلاحيات…</p>
+          <p className="text-xs text-slate-400">جارٍ تحميل قائمة المستخدمين والصلاحيات…</p>
         </div>
       ) : (
         <>
@@ -285,28 +318,37 @@ function MembersTable({
     }
   }
 
+  function copyUserCredentials(member: Member) {
+    const loginUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login`;
+    const password = member.passwordHash || 'Password123!';
+    const text = `مرحباً ${member.name}،\nإليك بيانات دخولك المنشأة على نظام إدارة المكتب المتكامل:\n\n- البريد الإلكتروني (اسم المستخدم): ${member.email}\n- كلمة المرور: ${password}\n- الدور الوظيفي: ${ROLE_LABELS[member.role] || member.role}\n\nرابط تسجيل الدخول المباشر:\n${loginUrl}`;
+
+    void navigator.clipboard.writeText(text);
+    alert(`تم نسخ بيانات دخول ${member.name} بنجاح!\nالبريد: ${member.email}\nكلمة المرور: ${password}`);
+  }
+
   return (
     <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-800 text-xs text-slate-400 font-bold flex items-center justify-between">
-        <span>أعضاء الفريق والوصول المصرح به ({members.length})</span>
-        <span className="text-[11px] text-sky-400 font-normal">المالك لديه تحكم كامل في منح وتعديل صلاحيات كل فرد</span>
+        <span>قائمة المستخدمين والحسابات المفعلة ({members.length})</span>
+        <span className="text-[11px] text-sky-400 font-normal">المالك لديه صلاحية مطلقة لإضافة وتعديل بيانات أي مستخدم</span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-right text-xs min-w-[46rem]">
+        <table className="w-full text-right text-xs min-w-[50rem]">
           <thead className="bg-slate-800/80 text-slate-400 font-bold border-b border-slate-700">
             <tr>
               <th className="p-3.5">الاسم والوظيفة</th>
-              <th className="p-3.5">البريد الإلكتروني</th>
+              <th className="p-3.5">البريد الإلكتروني (اسم المستخدم)</th>
               <th className="p-3.5">الدور</th>
               <th className="p-3.5">الحالة</th>
               <th className="p-3.5">الصلاحيات المخصصة</th>
-              <th className="p-3.5">التحكم والإجراءات</th>
+              <th className="p-3.5">التحكم وإرسال البيانات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {members.map((m) => (
-              <tr key={m.id} className="hover:bg-slate-800/40">
+              <tr key={m.id} className="hover:bg-slate-800/40 transition">
                 <td className="p-3.5">
                   <span className="font-bold text-white block">{m.name}</span>
                   {m.jobTitle && (
@@ -330,15 +372,25 @@ function MembersTable({
                 </td>
                 <td className="p-3.5">
                   {m.role === 'OWNER' ? (
-                    <span className="text-emerald-400 font-bold">صلاحيات كاملة مطلقة (المالك)</span>
+                    <span className="text-emerald-400 font-bold">صلاحيات مطلقة (المالك)</span>
                   ) : m.overrideCount > 0 ? (
-                    <span className="text-amber-400 font-bold">{m.overrideCount} صلاحية مخصصة</span>
+                    <span className="text-amber-400 font-bold">{m.overrideCount} صلاحيات مخصصة</span>
                   ) : (
-                    <span className="text-slate-500">حسب الدور ({ROLE_LABELS[m.role] ?? m.role})</span>
+                    <span className="text-slate-500">تتبع الدور ({ROLE_LABELS[m.role] ?? m.role})</span>
                   )}
                 </td>
                 <td className="p-3.5">
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyUserCredentials(m)}
+                      className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors flex items-center gap-1.5"
+                      title="نسخ البريد الإلكتروني وكلمة المرور ورابط الدخول المباشر"
+                    >
+                      <Copy className="w-3 h-3" />
+                      نسخ بيانات الدخول
+                    </button>
+
                     {m.role !== 'OWNER' && canManagePerms && (
                       <button
                         type="button"
@@ -346,9 +398,10 @@ function MembersTable({
                         className="bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors flex items-center gap-1.5"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        تعديل الصلاحيات
+                        الصلاحيات
                       </button>
                     )}
+
                     {m.role !== 'OWNER' && m.status !== 'SUSPENDED' && (
                       <button
                         type="button"
@@ -450,12 +503,11 @@ function InviteModal({
   onClose: () => void;
   onDone: (newMember?: Member) => void;
 }) {
-  const { user } = useAuthStore();
-  const [form, setForm] = useState({ name: '', email: '', role: 'EMPLOYEE', jobTitle: '' });
+  const { createDirectUser } = useAuthStore();
+  const [form, setForm] = useState({ name: '', email: '', password: 'Password123!', role: 'EMPLOYEE', jobTitle: '' });
   const [grants, setGrants] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ email: string; token: string } | null>(null);
+  const [createdUser, setCreatedUser] = useState<{ name: string; email: string; password: string; role: string; permsCount: number } | null>(null);
 
   const groups = useMemo(() => groupPermissions(catalog.length ? catalog : MOCK_CATALOG), [catalog]);
 
@@ -470,70 +522,86 @@ function InviteModal({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    setError(null);
     try {
-      const result = await apiFetch<{ email: string; invitationToken: string }>(
-        '/team/invitations',
-        {
-          method: 'POST',
-          body: JSON.stringify({ ...form, grantPermissions: [...grants] }),
-        },
-      );
-      setIssued({ email: result.email, token: result.invitationToken });
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 0) {
-        // Mock preview invitation generator
-        const mockToken = `inv-${Date.now().toString(36)}`;
-        const newMember: Member = {
-          id: `usr-${Date.now().toString(36)}`,
-          name: form.name,
-          email: form.email,
-          role: form.role,
-          status: 'PENDING_INVITATION',
-          jobTitle: form.jobTitle || 'عضو فريق جديد',
-          overrideCount: grants.size,
-        };
-        setIssued({ email: form.email, token: mockToken });
-        onDone(newMember);
-        return;
-      }
-      setError(err instanceof ApiRequestError ? err.message : 'تعذر إرسال الدعوة');
+      createDirectUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        jobTitle: form.jobTitle,
+        permissions: [...grants],
+      });
+
+      await apiFetch('/team/invitations', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, grantPermissions: [...grants] }),
+      }).catch(() => null);
+
+      const newMember: Member = {
+        id: `usr-${Date.now().toString(36)}`,
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        status: 'ACTIVE',
+        jobTitle: form.jobTitle || 'موظف مخصص',
+        overrideCount: grants.size,
+        passwordHash: form.password,
+      };
+
+      setCreatedUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        permsCount: grants.size,
+      });
+
+      onDone(newMember);
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (issued) {
-    const link = `${window.location.origin}/invitation/${issued.token}`;
+  if (createdUser) {
+    const loginUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login`;
+    const fullCredentialsText = `مرحباً ${createdUser.name}،\nتم إنشاء حسابك بنجاح في نظام إدارة المكتب المتكامل.\n\nبيانات الدخول المباشرة الخاصة بك:\n- البريد الإلكتروني: ${createdUser.email}\n- كلمة المرور: ${createdUser.password}\n- الدور الوظيفي: ${ROLE_LABELS[createdUser.role]}\n- عدد الصلاحيات المخصصة: ${createdUser.permsCount}\n\nرابط تسجيل الدخول المباشر:\n${loginUrl}`;
+
     return (
-      <Modal title="تم إنشاء الدعوة وتحديد الصلاحيات المخصصة" onClose={() => onDone()}>
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-slate-300 leading-relaxed">
-            تم تسجيل الحساب بنجاح. أرسل هذا الرابط المباشر للموظف <span dir="ltr" className="text-sky-400 font-bold">{issued.email}</span> ليقوم بإنشاء كلمة مروره وتفعيل حسابه بالصلاحيات التي حددتها له.
-          </p>
-          <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-3 text-xs text-sky-300">
-            <span className="font-bold block mb-1">البيانات المخصصة للمستخدم:</span>
-            <ul className="list-disc list-inside text-[11px] text-slate-300 space-y-0.5">
-              <li>الدور الأساسي: <strong className="text-white">{ROLE_LABELS[form.role]}</strong></li>
-              <li>عدد الصلاحيات المخصصة المستثناة: <strong className="text-amber-400">{grants.size} صلاحية</strong></li>
-            </ul>
+      <Modal title="تم إنشاء وتفعيل حساب المستخدم فوراً" onClose={() => onDone()}>
+        <div className="flex flex-col gap-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 space-y-1">
+            <p className="font-bold text-sm text-emerald-400">✓ الحساب شغال وجاهز للدخول الآن!</p>
+            <p>يمكن للموظف استخدام البيانات أدناه للدخول فورياً للنظام.</p>
           </div>
-          <CopyField value={link} />
+
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 space-y-2 text-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">اسم المستخدم:</span>
+              <strong className="text-white">{createdUser.name}</strong>
+            </div>
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">البريد الإلكتروني:</span>
+              <strong className="text-sky-400 font-mono" dir="ltr">{createdUser.email}</strong>
+            </div>
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">كلمة المرور:</span>
+              <strong className="text-amber-400 font-mono" dir="ltr">{createdUser.password}</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">الدور والصلاحيات:</span>
+              <strong className="text-white">{ROLE_LABELS[createdUser.role]} ({createdUser.permsCount} صلاحيات مخصصة)</strong>
+            </div>
+          </div>
+
+          <CopyFullButton text={fullCredentialsText} />
         </div>
       </Modal>
     );
   }
 
   return (
-    <Modal title="إضافة / دعوة موظف جديد مع تخصيص الصلاحيات" onClose={onClose}>
+    <Modal title="إنشاء حساب مستخدم جديد وتحديد كلمة المرور والصلاحيات" onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        {error && (
-          <div className="flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl p-3 text-xs">
-            <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <Field label="اسم الموظف *">
             <input
@@ -542,18 +610,29 @@ function InviteModal({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={INPUT}
-              placeholder="مثال: المهندس يوسف حسن"
+              placeholder="مثال: أ/ يوسف حسن"
             />
           </Field>
-          <Field label="البريد الإلكتروني *">
+          <Field label="البريد الإلكتروني (اسم المستخدم) *">
             <input
               required
               type="email"
               dir="ltr"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={`${INPUT} text-left`}
-              placeholder="youssef@company.com"
+              className={`${INPUT} text-left font-mono`}
+              placeholder="youssef@office.com"
+            />
+          </Field>
+          <Field label="كلمة المرور المحددة *">
+            <input
+              required
+              minLength={6}
+              dir="ltr"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className={`${INPUT} text-left font-mono`}
+              placeholder="Password123!"
             />
           </Field>
           <Field label="الدور الوظيفي *">
@@ -573,12 +652,15 @@ function InviteModal({
               ))}
             </select>
           </Field>
+        </div>
+
+        <div>
           <Field label="المسمى الوظيفي">
             <input
               value={form.jobTitle}
               onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
               className={INPUT}
-              placeholder="أخصائي متابعة وتسجيل"
+              placeholder="أخصائي خدمات وضرائب"
             />
           </Field>
         </div>
@@ -586,13 +668,10 @@ function InviteModal({
         <div className="border-t border-slate-800 pt-3">
           <p className="text-xs font-bold text-sky-400 mb-1 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
-            تحديد صلاحيات خاصة إضافية لـ {form.name || 'الموظف'}
-          </p>
-          <p className="text-[11px] text-slate-400 mb-3">
-            الدور المختصر يمنح صلاحياته التلقائية. اختر من القائمة التالية الصلاحيات الإضافية التي ترغب بمنحها حصرياً لهذا الموظف:
+            حدد الصلاحيات الخاصة بـ {form.name || 'المستخدم'}
           </p>
 
-          <div className="max-h-60 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-slate-800 rounded-xl p-3 bg-slate-950/40">
+          <div className="max-h-56 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-slate-800 rounded-xl p-3 bg-slate-950/40">
             {groups.map((group) => (
               <div key={group.key}>
                 <p className="text-[11px] font-bold text-sky-300 mb-1.5 border-b border-slate-800 pb-1">{group.label}</p>
@@ -623,7 +702,7 @@ function InviteModal({
           </button>
           <button type="submit" disabled={submitting} className={BTN_PRIMARY}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-            تأكيد وإنشاء رابط الدعوة والصلاحيات
+            تأكيد وإنشاء حساب المستخدم فوراً
           </button>
         </div>
       </form>
@@ -786,7 +865,7 @@ function PermissionsModal({
 const INPUT =
   'w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent';
 const BTN_PRIMARY =
-  'bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-xs font-bold rounded-xl px-4 py-2.5 flex items-center gap-2 transition-colors shadow-md shadow-sky-600/30';
+  'bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold rounded-xl px-4 py-2.5 flex items-center gap-2 transition-colors shadow-md shadow-emerald-600/30';
 const BTN_SECONDARY =
   'bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl px-4 py-2.5 transition-colors';
 
@@ -853,39 +932,30 @@ function Modal({
   );
 }
 
-function CopyField({ value }: { value: string }) {
+function CopyFullButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        readOnly
-        dir="ltr"
-        value={value}
-        onFocus={(e) => e.currentTarget.select()}
-        className={`${INPUT} text-left text-[11px] font-mono`}
-      />
-      <button
-        type="button"
-        onClick={async () => {
-          await navigator.clipboard.writeText(value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        }}
-        className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl px-3 py-2.5 flex items-center gap-1.5 shrink-0 transition-colors shadow-md shadow-sky-600/30"
-      >
-        {copied ? (
-          <>
-            <Check className="w-3.5 h-3.5" />
-            تم النسخ
-          </>
-        ) : (
-          <>
-            <Copy className="w-3.5 h-3.5" />
-            نسخ الرابط
-          </>
-        )}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }}
+      className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl py-3 flex items-center justify-center gap-2 transition-colors shadow-lg shadow-sky-600/30"
+    >
+      {copied ? (
+        <>
+          <Check className="w-4 h-4" />
+          تم نسخ بيانات الدخول الكاملة بنجاح!
+        </>
+      ) : (
+        <>
+          <Copy className="w-4 h-4" />
+          نسخ بيانات الدخول لإرسالها للمستخدم (واتساب / إيميل)
+        </>
+      )}
+    </button>
   );
 }
