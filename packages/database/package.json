@@ -12,6 +12,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
     "seed": "ts-node --transpile-only src/seed.ts",
+    "build:sql": "ts-node --transpile-only scripts/build-setup-sql.ts",
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
