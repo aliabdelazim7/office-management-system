@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS "field_task_events" CASCADE;
 DROP TABLE IF EXISTS "field_tasks" CASCADE;
 DROP TABLE IF EXISTS "service_order_steps" CASCADE;
 DROP TABLE IF EXISTS "service_orders" CASCADE;
-DROP TABLE IF EXISTS "service_catalog" CASCADE;
+DROP TABLE IF EXISTS "service_catalog_items" CASCADE;
 DROP TABLE IF EXISTS "contracts" CASCADE;
 DROP TABLE IF EXISTS "contract_templates" CASCADE;
 DROP TABLE IF EXISTS "federation_memberships" CASCADE;
@@ -497,65 +497,64 @@ INSERT INTO "permissions" ("code", "groupKey", "groupLabel", "labelAr", "labelEn
 ('audit.read', 'settings', 'إعدادات المنظومة والصلاحيات', 'عرض سجل التدقيق الأمني', 'View Audit Logs', 'الاطلاع على جميع التحركات والأمن', 620);
 
 -- -----------------------------------------------------------------------------
--- 5. SEED DEFAULT TENANT AND USERS (BCRYPT PASSWORDS)
+-- 5. SEED DEFAULT TENANT AND USERS (WITH VALID RFC4122 UUIDs)
 -- -----------------------------------------------------------------------------
 
 -- Tenant (مكتب النخبة)
 INSERT INTO "tenants" ("id", "name", "slug", "status", "phone", "email", "address", "taxNumber") VALUES
-('tnt-elite-001', 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية', 'elite-consulting', 'ACTIVE', '01000000000', 'contact@elite-office.com', 'القاهرة - التجمع الخامس - شارع التسعين الشمالي', '789-456-123');
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية', 'elite-consulting', 'ACTIVE', '01000000000', 'contact@elite-office.com', 'القاهرة - التجمع الخامس - شارع التسعين الشمالي', '789-456-123');
 
 -- Users (Bcrypted hash for 'Password123!')
--- Hash: $2a$12$LdI3Y5yQvK1tEaE5zEaF3uQ6.1yZ7Y5yQvK1tEaE5zEaF3uQ6.1y
 INSERT INTO "users" ("id", "tenantId", "name", "email", "passwordHash", "role", "status", "phone", "jobTitle", "salary") VALUES
-('usr-owner-001', 'tnt-elite-001', 'د. أحمد عبد الفتاح (المالك)', 'owner@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'OWNER', 'ACTIVE', '01011111111', 'المدير التنفيذي والمالك', 35000),
-('usr-mgr-001', 'tnt-elite-001', 'أ/ سارة محمود (مديرة العمليات)', 'manager@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'MANAGER', 'ACTIVE', '01022222222', 'مديرة التشغيل والمعاملات', 18000),
-('usr-acc-001', 'tnt-elite-001', 'أ/ محمد طاهر (محاسب مكتب)', 'accountant@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'ACCOUNTANT', 'ACTIVE', '01033333333', 'رئيس قسم الحسابات والضرائب', 12000),
-('usr-emp-001', 'tnt-elite-001', 'أ/ خليل ابراهيم (مندوب ميداني)', 'employee@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'EMPLOYEE', 'ACTIVE', '01044444444', 'مسؤول علاقات حكومية ومندوب ميداني', 8000),
-('usr-view-001', 'tnt-elite-001', 'أ/ علاء مرسي (مراقب جودة)', 'viewer@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'VIEWER', 'ACTIVE', '01055555555', 'مستشار قانوني خارجي (اطلاع)', 0);
+('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'د. أحمد عبد الفتاح (المالك)', 'owner@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'OWNER', 'ACTIVE', '01011111111', 'المدير التنفيذي والمالك', 35000),
+('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ سارة محمود (مديرة العمليات)', 'manager@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'MANAGER', 'ACTIVE', '01022222222', 'مديرة التشغيل والمعاملات', 18000),
+('d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ محمد طاهر (محاسب مكتب)', 'accountant@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'ACCOUNTANT', 'ACTIVE', '01033333333', 'رئيس قسم الحسابات والضرائب', 12000),
+('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ خليل ابراهيم (مندوب ميداني)', 'employee@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'EMPLOYEE', 'ACTIVE', '01044444444', 'مسؤول علاقات حكومية ومندوب ميداني', 8000),
+('f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ علاء مرسي (مراقب جودة)', 'viewer@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'VIEWER', 'ACTIVE', '01055555555', 'مستشار قانوني خارجي (اطلاع)', 0);
 
 -- Number Sequences
 INSERT INTO "number_sequences" ("id", "tenantId", "kind", "prefix", "current") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'CLIENT_CODE', 'CL-', 2),
-(gen_random_uuid(), 'tnt-elite-001', 'INVOICE_NUMBER', 'INV-', 1),
-(gen_random_uuid(), 'tnt-elite-001', 'SERVICE_ORDER', 'SO-', 1),
-(gen_random_uuid(), 'tnt-elite-001', 'CONTRACT_NUMBER', 'CT-', 1),
-(gen_random_uuid(), 'tnt-elite-001', 'EXPENSE_VOUCHER', 'EXP-', 1);
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'CLIENT_CODE', 'CL-', 2),
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'INVOICE_NUMBER', 'INV-', 1),
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'SERVICE_ORDER', 'SO-', 1),
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'CONTRACT_NUMBER', 'CT-', 1),
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'EXPENSE_VOUCHER', 'EXP-', 1);
 
 -- Seed Clients
 INSERT INTO "clients" ("id", "tenantId", "clientCode", "status", "name", "companyName", "tradeName", "legalType", "phone", "whatsapp", "email", "address", "businessActivity", "branchesCount") VALUES
-('cli-1001', 'tnt-elite-001', 'CL-1001', 'ACTIVE', 'المهندس طارق منصور', 'شركة المصرية للحلول البرمجية', 'إيجيبت تيك Soft', 'LLC', '01211112222', '01211112222', 'tarek@egypttech.com', 'المدينة المنورة - مدينة نصر', 'تطوير البرمجيات والاستشارات التكنولوجية', 2),
-('cli-1002', 'tnt-elite-001', 'CL-1002', 'ACTIVE', 'الحاج مصطفى السعيد', 'مؤسسة السعيد للمقاولات والتوريدات', 'السعيد جروب', 'SOLE_PROPRIETORSHIP', '01199998888', '01199998888', 'info@elsaeed-group.com', 'ش الميرغني - مصر الجديدة', 'المقاولات العامة والتوريدات التخصصية', 3);
+('11111111-1111-4111-a111-111111111111', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'CL-1001', 'ACTIVE', 'المهندس طارق منصور', 'شركة المصرية للحلول البرمجية', 'إيجيبت تيك Soft', 'LLC', '01211112222', '01211112222', 'tarek@egypttech.com', 'المدينة المنورة - مدينة نصر', 'تطوير البرمجيات والاستشارات التكنولوجية', 2),
+('22222222-2222-4222-a222-222222222222', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'CL-1002', 'ACTIVE', 'الحاج مصطفى السعيد', 'مؤسسة السعيد للمقاولات والتوريدات', 'السعيد جروب', 'SOLE_PROPRIETORSHIP', '01199998888', '01199998888', 'info@elsaeed-group.com', 'ش الميرغني - مصر الجديدة', 'المقاولات العامة والتوريدات التخصصية', 3);
 
 -- Commercial Register
 INSERT INTO "commercial_registers" ("id", "tenantId", "clientId", "registerNumber", "depositNumber", "tradeName", "capital", "activity", "address", "registrationDate", "expiryDate") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'cli-1001', 'CR-994821', 'DEP-2023-88', 'شركة المصرية للحلول البرمجية ش.م.م', 500000.00, 'برمجيات، تصميم شبكات، ودعم فني', 'القاهرة - مدينة نصر - المنطقة الأولى', '2021-05-10', CURRENT_TIMESTAMP + INTERVAL '15 days');
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '11111111-1111-4111-a111-111111111111', 'CR-994821', 'DEP-2023-88', 'شركة المصرية للحلول البرمجية ش.م.م', 500000.00, 'برمجيات، تصميم شبكات، ودعم فني', 'القاهرة - مدينة نصر - المنطقة الأولى', '2021-05-10', CURRENT_TIMESTAMP + INTERVAL '15 days');
 
 -- Tax Card
 INSERT INTO "tax_cards" ("id", "tenantId", "clientId", "cardNumber", "activity", "taxOffice", "taxCode", "expiryDate", "taxSystemEnrolled") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'cli-1001', 'TAX-554-321-998', 'استشارات حاسب آلي وتطوير النظم', 'مأمورية استثمار القاهرة', 'INV-402', CURRENT_TIMESTAMP + INTERVAL '15 days', true);
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '11111111-1111-4111-a111-111111111111', 'TAX-554-321-998', 'استشارات حاسب آلي وتطوير النظم', 'مأمورية استثمار القاهرة', 'INV-402', CURRENT_TIMESTAMP + INTERVAL '15 days', true);
 
 -- Documents
 INSERT INTO "documents" ("id", "tenantId", "clientId", "uploaderId", "title", "category", "storageKey", "fileName", "mimeType", "fileSize", "expiryDate", "reminderDays") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'cli-1001', 'usr-mgr-001', 'السجل التجاري الرئيسي الموثق', 'COMMERCIAL_REGISTER', 'docs/cr_egypttech.pdf', 'cr_egypttech.pdf', 'application/pdf', 102400, CURRENT_TIMESTAMP + INTERVAL '15 days', 30);
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '11111111-1111-4111-a111-111111111111', 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'السجل التجاري الرئيسي الموثق', 'COMMERCIAL_REGISTER', 'docs/cr_egypttech.pdf', 'cr_egypttech.pdf', 'application/pdf', 102400, CURRENT_TIMESTAMP + INTERVAL '15 days', 30);
 
 -- Service Orders
 INSERT INTO "service_orders" ("id", "tenantId", "orderNumber", "clientId", "ownerId", "serviceName", "status", "agreedPrice", "paidAmount", "startDate", "dueDate") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'SO-2026-001', 'cli-1001', 'usr-emp-001', 'تجديد السجل التجاري والبطاقة الضريبية', 'IN_PROGRESS', 7500.00, 5000.00, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days');
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'SO-2026-001', '11111111-1111-4111-a111-111111111111', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'تجديد السجل التجاري والبطاقة الضريبية', 'IN_PROGRESS', 7500.00, 5000.00, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days');
 
 -- Invoices & Payments
 INSERT INTO "invoices" ("id", "tenantId", "invoiceNumber", "clientId", "status", "subtotal", "totalAmount", "paidAmount", "dueDate") VALUES
-('inv-1001', 'tnt-elite-001', 'INV-2026-001', 'cli-1001', 'PARTIALLY_PAID', 7500.00, 7500.00, 5000.00, CURRENT_TIMESTAMP + INTERVAL '10 days');
+('33333333-3333-4333-a333-333333333333', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'INV-2026-001', '11111111-1111-4111-a111-111111111111', 'PARTIALLY_PAID', 7500.00, 7500.00, 5000.00, CURRENT_TIMESTAMP + INTERVAL '10 days');
 
 INSERT INTO "payments" ("id", "tenantId", "invoiceId", "receivedById", "amount", "method", "notes") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'inv-1001', 'usr-acc-001', 5000.00, 'BANK_TRANSFER', 'دفعة مقدمة لحساب تجديد السجل والتأقلم الضريبي');
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '33333333-3333-4333-a333-333333333333', 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 5000.00, 'BANK_TRANSFER', 'دفعة مقدمة لحساب تجديد السجل والتأقلم الضريبي');
 
 -- Expenses
 INSERT INTO "expenses" ("id", "tenantId", "recordedById", "voucherNumber", "title", "category", "amount", "recipient") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'usr-emp-001', 'EXP-2026-001', 'رسوم حكومية - الغرفة التجارية السنوية', 'رسوم حكومية', 1850.00, 'الغرفة التجارية بالقاهرة');
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'EXP-2026-001', 'رسوم حكومية - الغرفة التجارية السنوية', 'رسوم حكومية', 1850.00, 'الغرفة التجارية بالقاهرة');
 
 -- Audit Log
 INSERT INTO "audit_logs" ("id", "tenantId", "userId", "action", "entityType", "entityId", "summary", "ipAddress") VALUES
-(gen_random_uuid(), 'tnt-elite-001', 'usr-owner-001', 'CREATE', 'Tenant', 'tnt-elite-001', 'تأسيس حساب المكتب وإعداد مصفوفة الصلاحيات الشاملة بنجاح', '127.0.0.1');
+(gen_random_uuid(), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'CREATE', 'Tenant', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'تأسيس حساب المكتب وإعداد مصفوفة الصلاحيات الشاملة بنجاح', '127.0.0.1');
 
 -- -----------------------------------------------------------------------------
 -- 6. CREATE PERFORMANCE INDEXES
