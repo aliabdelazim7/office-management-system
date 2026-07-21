@@ -7,19 +7,22 @@
 :root {
   --font-cairo: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Enterprise Semantic Color Tokens (Light Defaults) */
+  /* Enterprise Semantic Tokens (Light Mode Defaults) */
   --bg-canvas: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-surface-secondary: #f1f5f9;
+  --bg-surface-secondary: #ffffff;
   --border-subtle: #e2e8f0;
   --border-hover: #cbd5e1;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
+  --input-bg: #f8fafc;
+  --button-sec-bg: #f1f5f9;
+  --button-sec-text: #334155;
 }
 
 .dark {
-  /* Enterprise Dark Tokens (Linear / Stripe #0B0F14 Palette) */
+  /* Enterprise Semantic Tokens (Dark Mode Defaults - Linear / Stripe Style) */
   --bg-canvas: #0b0f14;
   --bg-surface: #101418;
   --bg-surface-secondary: #14181f;
@@ -28,47 +31,52 @@
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
+  --input-bg: #101418;
+  --button-sec-bg: #1a202c;
+  --button-sec-text: #e2e8f0;
 }
 
 body {
   font-family: var(--font-cairo);
   direction: rtl;
   text-align: right;
-  background-color: #0b0f14;
-  color: #f3f4f6;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
 }
 
 /* Premium Enterprise Card System */
 .glass-card, .enterprise-card {
-  background-color: #14181f;
-  border: 1px solid #222733;
+  background-color: var(--bg-surface-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-  transition: border-color 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: border-color 150ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms ease-out, color 150ms ease-out;
 }
 
 .glass-card:hover, .enterprise-card:hover {
-  border-color: #333a48;
+  border-color: var(--border-hover);
 }
 
 .glass-header, .enterprise-header {
-  background-color: rgba(16, 20, 24, 0.9);
+  background-color: var(--bg-surface);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid #222733;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
 
 /* Enterprise Form Controls */
 .enterprise-input {
   width: 100%;
-  background-color: #101418;
-  border: 1px solid #222733;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
   padding: 0.625rem 0.875rem;
-  color: #f3f4f6;
+  color: var(--text-primary);
   font-size: 0.875rem;
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out;
 }
 
 .enterprise-input:focus {
@@ -78,7 +86,7 @@ body {
 }
 
 .enterprise-input::placeholder {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Enterprise Buttons */
@@ -100,21 +108,20 @@ body {
 }
 
 .btn-secondary {
-  background-color: #1a202c;
-  border: 1px solid #222733;
-  color: #e2e8f0;
+  background-color: var(--button-sec-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--button-sec-text);
   font-weight: 600;
   border-radius: 0.75rem;
   padding: 0.625rem 1rem;
   display: inline-flex;
   items-center: center;
   gap: 0.5rem;
-  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
 }
 
 .btn-secondary:hover {
-  background-color: #2d3748;
-  border-color: #333a48;
+  border-color: var(--border-hover);
 }
 
 /* Custom Clean Scrollbar */
@@ -123,14 +130,14 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f14;
+  background: var(--bg-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #222733;
+  background: var(--border-subtle);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #333a48;
+  background: var(--border-hover);
 }
 
 /* Print CSS Formatting */
