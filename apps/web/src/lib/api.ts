@@ -13,7 +13,7 @@ const REFRESH_KEY = 'office_erp_refresh';
 
 export interface ApiError {
   statusCode: number;
-  message: string;
+  message: string | string[];
   code?: string;
   details?: unknown;
 }
@@ -23,7 +23,13 @@ export class ApiRequestError extends Error {
     readonly status: number,
     readonly body: ApiError,
   ) {
-    super(body.message);
+    const rawMessage = body?.message;
+    const msg = Array.isArray(rawMessage)
+      ? rawMessage.join(', ')
+      : typeof rawMessage === 'string' && rawMessage.trim()
+      ? rawMessage
+      : 'حدث خطأ غير متوقع في الخادم';
+    super(msg);
     this.name = 'ApiRequestError';
   }
 }
