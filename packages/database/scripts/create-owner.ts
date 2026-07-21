@@ -82,9 +82,7 @@ async function emitSql(args: Args, password: string, passwordHash: string): Prom
   const userId = randomUUID();
 
   const rolePermissionRows = (Object.entries(DEFAULT_ROLE_PERMISSIONS) as [UserRole, string[]][])
-    .flatMap(([role, codes]) =>
-      codes.map((code) => `  (gen_random_uuid(), ${q(tenantId)}::uuid, '${role}', ${q(code)}, true)`),
-    )
+    .flatMap(([role, codes]) => codes.map((code) => `  (${q(role)}, ${q(code)})`))
     .join(',\n');
 
   const sequences = [
@@ -94,7 +92,7 @@ async function emitSql(args: Args, password: string, passwordHash: string): Prom
     [SequenceKind.CONTRACT_NUMBER, 'CT-'],
     [SequenceKind.EXPENSE_VOUCHER, 'EXP-'],
   ]
-    .map(([kind, prefix]) => `  (gen_random_uuid(), ${q(tenantId)}::uuid, '${kind}', ${q(prefix)}, 0)`)
+    .map(([kind, prefix]) => `  (${q(kind)}, ${q(prefix)})`)
     .join(',\n');
 
   const sqlText = `-- =============================================================================
@@ -108,32 +106,41 @@ async function emitSql(args: Args, password: string, passwordHash: string): Prom
 
 BEGIN;
 
-DO $guard$
-BEGIN
-  IF EXISTS (SELECT 1 FROM "tenants" WHERE "slug" = ${q(args.slug)}) THEN
-    RAISE EXCEPTION 'An office with slug ${args.slug} already exists.';
-  END IF;
-END
-$guard$;
-
+-- Idempotent: an office that already exists is left untouched, and the password
+-- below is simply never used. Re-running is a no-op rather than an error, so
+-- this can live in the same file as the schema.
 INSERT INTO "tenants" ("id", "name", "slug", "status", "email", "settings", "createdAt", "updatedAt")
 VALUES (${q(tenantId)}::uuid, ${q(args.tenantName)}, ${q(args.slug)}, 'ACTIVE', ${q(args.email)},
-        '{"currency":"EGP","timezone":"Africa/Cairo","locale":"ar-EG"}'::jsonb, now(), now());
+        '{"currency":"EGP","timezone":"Africa/Cairo","locale":"ar-EG"}'::jsonb, now(), now())
+ON CONFLICT ("slug") DO NOTHING;
 
+-- The owner is attached to whichever tenant carries this slug, which may be a
+-- pre-existing one rather than the row above.
 INSERT INTO "users" ("id", "tenantId", "name", "email", "passwordHash", "role", "status",
                      "failedLoginAttempts", "createdAt", "updatedAt")
-VALUES (${q(userId)}::uuid, ${q(tenantId)}::uuid, ${q(args.ownerName)}, ${q(args.email)},
-        ${q(passwordHash)}, 'OWNER', 'ACTIVE', 0, now(), now());
+SELECT ${q(userId)}::uuid, t."id", ${q(args.ownerName)}, ${q(args.email)},
+       ${q(passwordHash)}, 'OWNER', 'ACTIVE', 0, now(), now()
+FROM "tenants" t
+WHERE t."slug" = ${q(args.slug)}
+ON CONFLICT ("tenantId", "email") DO NOTHING;
 
 INSERT INTO "role_permissions" ("id", "tenantId", "role", "permissionCode", "granted")
-VALUES
+SELECT gen_random_uuid(), t."id", v.role::"UserRole", v.code, true
+FROM "tenants" t
+CROSS JOIN (VALUES
 ${rolePermissionRows}
-ON CONFLICT DO NOTHING;
+) AS v(role, code)
+WHERE t."slug" = ${q(args.slug)}
+ON CONFLICT ("tenantId", "role", "permissionCode") DO NOTHING;
 
 INSERT INTO "number_sequences" ("id", "tenantId", "kind", "prefix", "current")
-VALUES
+SELECT gen_random_uuid(), t."id", v.kind::"SequenceKind", v.prefix, 0
+FROM "tenants" t
+CROSS JOIN (VALUES
 ${sequences}
-ON CONFLICT DO NOTHING;
+) AS v(kind, prefix)
+WHERE t."slug" = ${q(args.slug)}
+ON CONFLICT ("tenantId", "kind") DO NOTHING;
 
 COMMIT;
 `;

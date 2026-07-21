@@ -55,62 +55,32 @@ function main(): void {
 --  Source: packages/database/prisma/migrations/
 --  Regenerate: pnpm --filter @saas/database build:sql
 --
---  Paste into the Supabase SQL Editor and run once, on a NEW project.
+--  Paste into the Supabase SQL Editor and run.
 --
---  Creates ${migrations.length === 1 ? 'the schema' : `${migrations.length} migrations`}, then registers them in _prisma_migrations so a later
---  \`prisma migrate deploy\` recognises them as applied rather than trying to
---  create everything a second time.
+--  IDEMPOTENT. Each migration is wrapped in a check against _prisma_migrations
+--  and skipped if already recorded, so this file is safe on an empty project,
+--  on a partially-built one, and on a fully-built one. Running it twice is a
+--  no-op.
 --
---  Safe to run: aborts if the schema already contains tables. It never drops
---  anything. If you need a clean slate, do it deliberately in the SQL editor:
+--  An earlier version refused outright when the schema was non-empty, which was
+--  safe but useless: a database built from an older copy of this file then had
+--  no way forward except dropping everything.
+--
+--  It never drops anything. For a deliberate clean slate:
 --      DROP SCHEMA public CASCADE; CREATE SCHEMA public;
 --      GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role;
 --
---  Seeds the ${PERMISSION_CATALOG.length} permission definitions. It does NOT create tenants or
---  users — sign up through the API (POST /api/v1/auth/register-tenant) so the
---  owner password is hashed with bcrypt rather than written here in the clear.
+--  Seeds the ${PERMISSION_CATALOG.length} permission definitions.
 -- =============================================================================
 
 BEGIN;
 
--- --- Guard ------------------------------------------------------------------
--- Refuse to run on a populated schema rather than silently colliding.
-DO $guard$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_tables
-    WHERE schemaname = 'public' AND tablename NOT LIKE '\\_prisma%'
-  ) THEN
-    RAISE EXCEPTION
-      'Schema "public" is not empty. This script only initialises a fresh database. Drop the schema first if that is what you intend.';
-  END IF;
-END
-$guard$;
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-`);
 
-  for (const name of migrations) {
-    const file = join(migrationsDir, name, 'migration.sql');
-    const body = readFileSync(file, 'utf8').replace(/^﻿/, '');
-
-    parts.push(`
--- =============================================================================
---  Migration: ${name}
--- =============================================================================
-
-${body.trim()}
-`);
-  }
-
-  // -- Prisma bookkeeping -----------------------------------------------------
-  parts.push(`
--- =============================================================================
---  Prisma migration history
--- =============================================================================
---  Tells Prisma these migrations are already applied. Omitting this is what
---  makes a manual SQL setup and \`migrate deploy\` fight each other.
-
+-- --- Prisma migration history ------------------------------------------------
+-- Created first: everything below checks it. Recording each migration here is
+-- what stops a later \`prisma migrate deploy\` from trying to build the schema a
+-- second time.
 CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
   "id"                    VARCHAR(36)  PRIMARY KEY,
   "checksum"              VARCHAR(64)  NOT NULL,
@@ -121,20 +91,54 @@ CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
   "started_at"            TIMESTAMPTZ  NOT NULL DEFAULT now(),
   "applied_steps_count"   INTEGER      NOT NULL DEFAULT 0
 );
+
+-- A database built by an older copy of this file has the tables but no history
+-- rows. Backfill from what actually exists, so those migrations are not
+-- attempted again.
+INSERT INTO "_prisma_migrations"
+  ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+SELECT gen_random_uuid()::text, 'backfilled', now(), ${sql(migrations[0])}, now(), 1
+WHERE EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tenants')
+  AND NOT EXISTS (
+    SELECT 1 FROM "_prisma_migrations" WHERE "migration_name" = ${sql(migrations[0])}
+  );
 `);
 
   for (const name of migrations) {
-    const body = readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8').replace(
-      /^﻿/,
-      '',
-    );
+    const file = join(migrationsDir, name, 'migration.sql');
+    const body = readFileSync(file, 'utf8').replace(/^﻿/, '');
     const checksum = createHash('sha256').update(body).digest('hex');
+    // Dollar-quote tag unique per migration, so a nested $$ in the DDL cannot
+    // terminate the block early.
+    const tag = `$mig_${name}$`;
 
-    parts.push(`INSERT INTO "_prisma_migrations"
-  ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES
-  (gen_random_uuid()::text, ${sql(checksum)}, now(), ${sql(name)}, now(), 1)
-ON CONFLICT DO NOTHING;
+    parts.push(`
+-- =============================================================================
+--  Migration: ${name}
+-- =============================================================================
+
+DO ${tag}
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM "_prisma_migrations" WHERE "migration_name" = ${sql(name)}
+  ) THEN
+    RAISE NOTICE 'Skipping ${name} — already applied.';
+    RETURN;
+  END IF;
+
+${body
+  .trim()
+  .split('\n')
+  .map((line) => (line.trim() ? `  ${line}` : line))
+  .join('\n')}
+
+  INSERT INTO "_prisma_migrations"
+    ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+  VALUES (gen_random_uuid()::text, ${sql(checksum)}, now(), ${sql(name)}, now(), 1);
+
+  RAISE NOTICE 'Applied ${name}.';
+END
+${tag};
 `);
   }
 
@@ -192,3 +196,5 @@ COMMIT;
   console.log('    --sql --with-schema --out packages/database/SETUP.local.sql \\');
   console.log('    --slug <slug> --email <you@example.com>');
 }
+
+main();
