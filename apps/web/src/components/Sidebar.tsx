@@ -27,28 +27,25 @@ const ROLE_LABELS: Record<string, string> = {
   VIEWER: 'المراقب',
 };
 
-/**
- * Each link declares the permission it needs, so the sidebar shows only what
- * the signed-in person can actually open. This is presentation, not access
- * control — every one of these screens is enforced again at the API.
- */
 const NAV_ITEMS: Array<{ label: string; href: string; icon: typeof Users; permission?: string }> = [
-  { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
-  { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users, permission: 'client.view' },
-  { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText, permission: 'document.view' },
-  { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2, permission: 'gov.view' },
-  { label: 'إدارة الخدمات والمسارات', href: '/dashboard/services', icon: GitPullRequest, permission: 'service.view' },
-  { label: 'فريق العمل والصلاحيات', href: '/dashboard/team', icon: UsersRound, permission: 'user.view' },
-  { label: 'المهام الميدانية وتتبع GPS', href: '/dashboard/hr-gps', icon: UserCheck, permission: 'field.view_own' },
-  { label: 'الإدارة المالية والمقبوضات', href: '/dashboard/finance', icon: Wallet, permission: 'invoice.view' },
-  { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.view' },
+  { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users, permission: 'crm.read' },
+  { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText, permission: 'doc.read' },
+  { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2, permission: 'crm.read' },
+  { label: 'إدارة الخدمات والمسارات', href: '/dashboard/services', icon: GitPullRequest, permission: 'service.read' },
+  { label: 'فريق العمل والصلاحيات', href: '/dashboard/team', icon: UsersRound, permission: 'user.read' },
+  { label: 'المهام الميدانية وتتبع GPS', href: '/dashboard/hr-gps', icon: UserCheck, permission: 'field.read' },
+  { label: 'الإدارة المالية والمقبوضات', href: '/dashboard/finance', icon: Wallet, permission: 'finance.read' },
+  { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.read' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, permissions } = useAuthStore();
+  const { user, can } = useAuthStore();
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.has(item.permission));
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.permission || user?.role === 'OWNER' || can(item.permission)
+  );
 
   return (
     <aside className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-screen sticky top-0 z-40">
@@ -106,7 +103,7 @@ export default function Sidebar() {
           <div className="flex-1 overflow-hidden">
             <p className="text-xs font-bold text-slate-200 truncate">{user?.name}</p>
             <p className="text-[11px] text-slate-500 truncate">
-              {user?.jobTitle ?? `${permissions.size} صلاحية`}
+              {user?.jobTitle ?? 'كامل الصلاحيات (المالك)'}
             </p>
           </div>
         </div>
