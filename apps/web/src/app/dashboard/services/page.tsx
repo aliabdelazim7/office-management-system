@@ -47,11 +47,11 @@ export default function ServicesWorkflowPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <GitPullRequest className="w-5 h-5 text-sky-400" />
+          <h1 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <GitPullRequest className="w-5 h-5 text-indigo-500" />
             محرك إدارة المسارات والخدمات الحكومية (Multi-Step Workflow)
           </h1>
-          <p className="text-xs text-slate-400">تتبع خطوات تنفيذ الخدمات خطوة بخطوة، المسند إليهم، الملاحظات والمواعيد.</p>
+          <p className="text-xs text-[var(--text-muted)]">تتبع خطوات تنفيذ الخدمات خطوة بخطوة، المسند إليهم، الملاحظات والمواعيد.</p>
         </div>
       </div>
 
@@ -59,28 +59,28 @@ export default function ServicesWorkflowPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Service Orders List */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400">طلبات المعاملات والخدمات المفتوحة:</h3>
+          <h3 className="text-xs font-bold text-[var(--text-muted)]">طلبات المعاملات والخدمات المفتوحة:</h3>
           {services.map((srv) => (
             <div
               key={srv.id}
               onClick={() => setActiveService(srv)}
               className={`p-4 rounded-2xl border cursor-pointer transition ${
                 activeService?.id === srv.id
-                  ? 'bg-sky-600/10 border-sky-500 shadow-lg shadow-sky-500/10'
-                  : 'bg-slate-800/80 border-slate-700/60 hover:bg-slate-800'
+                  ? 'bg-indigo-500/10 border-indigo-500 shadow-subtle-sm'
+                  : 'bg-[var(--bg-surface-secondary)] border-[var(--border-subtle)] hover:border-[var(--border-hover)]'
               }`}
             >
               <div className="flex justify-between items-center text-xs mb-1">
-                <span className="font-bold text-sky-400">{srv.orderNumber}</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">{srv.orderNumber}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   {srv.status === 'IN_PROGRESS' ? 'قيد التنفيذ الميداني' : 'مكتملة'}
                 </span>
               </div>
-              <h4 className="font-bold text-white text-xs mb-1">{srv.serviceName}</h4>
-              <p className="text-[11px] text-slate-300 mb-2">{srv.clientName}</p>
-              <div className="flex justify-between text-[11px] text-slate-400 border-t border-slate-700/60 pt-2">
+              <h4 className="font-bold text-[var(--text-primary)] text-xs mb-1">{srv.serviceName}</h4>
+              <p className="text-[11px] text-[var(--text-secondary)] mb-2">{srv.clientName}</p>
+              <div className="flex justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2">
                 <span>المسؤول: {srv.assignedStaff}</span>
-                <span className="font-bold text-emerald-400">{srv.agreedPrice}</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{srv.agreedPrice}</span>
               </div>
             </div>
           ))}
@@ -88,23 +88,23 @@ export default function ServicesWorkflowPage() {
 
         {/* Right Column: Multi-Step Workflow Visual Track */}
         {activeService && (
-          <div className="lg:col-span-2 glass-card p-6 rounded-2xl border border-slate-800 space-y-6">
-            <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+          <div className="lg:col-span-2 enterprise-card p-6 rounded-2xl space-y-6">
+            <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-4">
               <div>
-                <span className="text-xs font-bold text-sky-400">{activeService.orderNumber}</span>
-                <h3 className="text-lg font-black text-white">{activeService.serviceName}</h3>
-                <p className="text-xs text-slate-300">{activeService.clientName}</p>
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{activeService.orderNumber}</span>
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">{activeService.serviceName}</h3>
+                <p className="text-xs text-[var(--text-secondary)]">{activeService.clientName}</p>
               </div>
 
               <div className="text-left text-xs">
-                <span className="block text-slate-400">القيمة الإجمالية:</span>
-                <span className="text-lg font-black text-emerald-400">{activeService.agreedPrice}</span>
+                <span className="block text-[var(--text-muted)]">القيمة الإجمالية:</span>
+                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{activeService.agreedPrice}</span>
               </div>
             </div>
 
             {/* Workflow Progress Tracker */}
             <div className="space-y-4">
-              <h4 className="font-bold text-xs text-slate-300">مراحل تنفيذ الخدمة الحكومية الميدانية (Step-by-Step Execution):</h4>
+              <h4 className="font-bold text-xs text-[var(--text-secondary)]">مراحل تنفيذ الخدمة الحكومية الميدانية (Step-by-Step Execution):</h4>
 
               <div className="space-y-3">
                 {activeService.steps.map((step: any) => (
@@ -115,7 +115,7 @@ export default function ServicesWorkflowPage() {
                         ? 'bg-emerald-500/10 border-emerald-500/30'
                         : step.status === 'IN_PROGRESS'
                         ? 'bg-amber-500/10 border-amber-500/30'
-                        : 'bg-slate-800 border-slate-700/60'
+                        : 'bg-[var(--bg-canvas)] border-[var(--border-subtle)]'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -125,15 +125,15 @@ export default function ServicesWorkflowPage() {
                             ? 'bg-emerald-500 text-white'
                             : step.status === 'IN_PROGRESS'
                             ? 'bg-amber-500 text-white animate-pulse'
-                            : 'bg-slate-700 text-slate-400'
+                            : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)]'
                         }`}
                       >
                         {step.stepIndex}
                       </div>
 
                       <div className="space-y-1 text-xs">
-                        <h5 className="font-bold text-white">{step.title}</h5>
-                        {step.notes && <p className="text-[11px] text-slate-300">ملاحظات: {step.notes}</p>}
+                        <h5 className="font-bold text-[var(--text-primary)]">{step.title}</h5>
+                        {step.notes && <p className="text-[11px] text-[var(--text-secondary)]">ملاحظات: {step.notes}</p>}
                       </div>
                     </div>
 
@@ -156,7 +156,7 @@ export default function ServicesWorkflowPage() {
                         </button>
                       )}
                       {step.status === 'COMPLETED' && (
-                        <span className="text-emerald-400 font-bold text-xs flex items-center gap-1">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-1">
                           <CheckCircle2 className="w-4 h-4" /> تم الإنجاز
                         </span>
                       )}

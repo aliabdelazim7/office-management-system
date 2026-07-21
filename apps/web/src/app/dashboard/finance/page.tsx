@@ -149,60 +149,60 @@ export default function FinancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-emerald-400" />
+          <h1 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-emerald-500" />
             الإدارة المالية ومقادير المقبوضات ودفتر الحسابات (Client Ledger & POS)
           </h1>
-          <p className="text-xs text-slate-400">إدارة مقبوضات الخدمات، سندات القبض، المصروفات، والمتبقي لكل عميل.</p>
+          <p className="text-xs text-[var(--text-muted)]">إدارة مقبوضات الخدمات، سندات القبض، المصروفات، والمتبقي لكل عميل.</p>
         </div>
 
         <button
           onClick={handlePrintFinanceLedger}
-          className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-2 transition"
+          className="btn-secondary text-xs py-2.5"
         >
-          <Printer className="w-4 h-4 text-emerald-400" />
+          <Printer className="w-4 h-4 text-emerald-500" />
           طباعة كشف الحسابات العام
         </button>
       </div>
 
       {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="glass-card p-5 rounded-2xl border border-slate-800">
-          <div className="flex justify-between items-center text-xs text-slate-400 font-bold mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+        <div className="enterprise-card p-5 rounded-2xl">
+          <div className="flex justify-between items-center text-xs text-[var(--text-secondary)] font-bold mb-2">
             <span>إجمالي الإيرادات المحصلة</span>
-            <ArrowDownRight className="w-4 h-4 text-emerald-400" />
+            <ArrowDownRight className="w-4 h-4 text-emerald-500" />
           </div>
-          <p className="text-2xl font-black text-emerald-400">20,000 ج.م</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">20,000 ج.م</p>
         </div>
 
-        <div className="glass-card p-5 rounded-2xl border border-slate-800">
-          <div className="flex justify-between items-center text-xs text-slate-400 font-bold mb-2">
+        <div className="enterprise-card p-5 rounded-2xl">
+          <div className="flex justify-between items-center text-xs text-[var(--text-secondary)] font-bold mb-2">
             <span>إجمالي المصروفات التشغيلية</span>
-            <ArrowUpRight className="w-4 h-4 text-rose-400" />
+            <ArrowUpRight className="w-4 h-4 text-rose-500" />
           </div>
-          <p className="text-2xl font-black text-rose-400">16,850 ج.م</p>
+          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">16,850 ج.م</p>
         </div>
 
-        <div className="glass-card p-5 rounded-2xl border border-slate-800">
-          <div className="flex justify-between items-center text-xs text-slate-400 font-bold mb-2">
+        <div className="enterprise-card p-5 rounded-2xl">
+          <div className="flex justify-between items-center text-xs text-[var(--text-secondary)] font-bold mb-2">
             <span>المتبقي غير المحصل (الديون)</span>
-            <Wallet className="w-4 h-4 text-amber-400" />
+            <Wallet className="w-4 h-4 text-amber-500" />
           </div>
-          <p className="text-2xl font-black text-amber-400">2,500 ج.م</p>
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">2,500 ج.م</p>
         </div>
       </div>
 
       {/* Invoices Directory */}
-      <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60 text-xs">
-          <span className="font-bold text-slate-300">سجل فواتير العملاء المقيدة ({invoices.length})</span>
+      <div className="enterprise-card rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--table-header-bg)] text-xs">
+          <span className="font-bold text-[var(--text-primary)]">سجل فواتير العملاء المقيدة ({invoices.length})</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
-            <thead className="bg-slate-800/80 text-slate-400 font-bold border-b border-slate-700">
+            <thead className="bg-[var(--table-header-bg)] text-[var(--text-muted)] font-bold border-b border-[var(--border-subtle)]">
               <tr>
                 <th className="p-3.5">رقم الفاتورة</th>
                 <th className="p-3.5">اسم العميل والشركة</th>
@@ -213,17 +213,17 @@ export default function FinancePage() {
                 <th className="p-3.5">تحصيل وتوليد سند (POS)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-200 font-medium">
+            <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)] font-medium">
               {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-800/40 transition">
-                  <td className="p-3.5 font-bold text-sky-400">{inv.invoiceNumber}</td>
-                  <td className="p-3.5 font-bold text-white">{inv.clientName}</td>
-                  <td className="p-3.5 font-bold text-slate-100">{inv.totalAmount.toLocaleString()} ج.م</td>
-                  <td className="p-3.5 font-bold text-emerald-400">{inv.paidAmount.toLocaleString()} ج.م</td>
-                  <td className="p-3.5 font-bold text-rose-400">{inv.remainingAmount.toLocaleString()} ج.م</td>
+                <tr key={inv.id} className="hover:bg-[var(--table-row-hover)] transition-colors">
+                  <td className="p-3.5 font-bold text-indigo-600 dark:text-indigo-400">{inv.invoiceNumber}</td>
+                  <td className="p-3.5 font-bold text-[var(--text-primary)]">{inv.clientName}</td>
+                  <td className="p-3.5 font-bold text-[var(--text-primary)]">{inv.totalAmount.toLocaleString()} ج.م</td>
+                  <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">{inv.paidAmount.toLocaleString()} ج.م</td>
+                  <td className="p-3.5 font-bold text-rose-600 dark:text-rose-400">{inv.remainingAmount.toLocaleString()} ج.م</td>
                   <td className="p-3.5">
                     <span className={`px-2.5 py-1 rounded text-[10px] font-bold ${
-                      inv.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      inv.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                     }`}>
                       {inv.status === 'PAID' ? 'محتسبة ومسددة' : 'دفعة جزئية'}
                     </span>
@@ -235,16 +235,16 @@ export default function FinancePage() {
                           setSelectedInvoice(inv);
                           setShowPaymentModal(true);
                         }}
-                        className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition flex items-center gap-1"
+                        className="btn-primary text-xs py-1 px-3 font-bold"
                       >
                         <DollarSign className="w-3.5 h-3.5" /> تحصيل دفعة (POS)
                       </button>
                     )}
                     <button
                       onClick={() => handlePrintReceipt(inv, inv.paidAmount)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:text-white font-bold text-xs flex items-center gap-1"
+                      className="btn-secondary text-xs py-1 px-2.5 font-bold"
                     >
-                      <Printer className="w-3.5 h-3.5 text-sky-400" /> طباعة سند
+                      <Printer className="w-3.5 h-3.5 text-indigo-500" /> طباعة سند
                     </button>
                   </td>
                 </tr>
@@ -256,22 +256,22 @@ export default function FinancePage() {
 
       {/* POS Payment Receipt Modal */}
       {showPaymentModal && selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-              <h3 className="font-bold text-base text-white">تسجيل سند قبض وتحصيل نقدًا / POS</h3>
-              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white">✕</button>
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="enterprise-card w-full max-w-md rounded-2xl p-6 space-y-4 shadow-subtle-lg">
+            <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="font-bold text-base text-[var(--text-primary)]">تسجيل سند قبض وتحصيل نقدًا / POS</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
             </div>
 
             <form onSubmit={handleRecordPayment} className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 space-y-1">
-                <p className="text-slate-400">الفاتورة رقم: <strong className="text-sky-400">{selectedInvoice.invoiceNumber}</strong></p>
-                <p className="text-slate-400">العميل: <strong className="text-white">{selectedInvoice.clientName}</strong></p>
-                <p className="text-slate-400">المتبقي غير المحصل: <strong className="text-rose-400 font-bold">{selectedInvoice.remainingAmount} ج.م</strong></p>
+              <div className="p-3 rounded-xl bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-1">
+                <p className="text-[var(--text-muted)]">الفاتورة رقم: <strong className="text-indigo-600 dark:text-indigo-400">{selectedInvoice.invoiceNumber}</strong></p>
+                <p className="text-[var(--text-muted)]">العميل: <strong className="text-[var(--text-primary)]">{selectedInvoice.clientName}</strong></p>
+                <p className="text-[var(--text-muted)]">المتبقي غير المحصل: <strong className="text-rose-600 dark:text-rose-400 font-bold">{selectedInvoice.remainingAmount} ج.م</strong></p>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-bold">المبلغ المستلم الآن (ج.م) *</label>
+                <label className="block text-[var(--text-primary)] mb-1 font-bold">المبلغ المستلم الآن (ج.م) *</label>
                 <input
                   required
                   type="number"
@@ -279,7 +279,7 @@ export default function FinancePage() {
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder={`أدخل المبلغ حتى ${selectedInvoice.remainingAmount}`}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-bold"
+                  className="enterprise-input font-bold"
                 />
               </div>
 
@@ -287,13 +287,13 @@ export default function FinancePage() {
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
+                  className="btn-secondary"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-1.5"
+                  className="btn-primary"
                 >
                   <Printer className="w-4 h-4" /> طباعة سند القبض والاعتماد
                 </button>

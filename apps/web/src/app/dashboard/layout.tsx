@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthGate>
-      <div className="flex min-h-screen bg-slate-900 text-slate-100 overflow-x-hidden">
+      <div className="flex min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] transition-colors overflow-x-hidden">
         <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0 w-full">
           <Navbar onToggleMobileSidebar={() => setMobileSidebarOpen((v) => !v)} />

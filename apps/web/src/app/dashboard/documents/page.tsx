@@ -127,25 +127,25 @@ export default function DocumentVaultPage() {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-sky-400" />
+          <h1 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-500" />
             خزينة المستندات الرقمية ومحرك التنبيهات (Document Vault)
           </h1>
-          <p className="text-xs text-slate-400">أرشفة المستندات الموثقة مع التنبيه الآلي قبل الانتهاء بـ 7 و 30 يوماً وتوليد عقود التأسيس.</p>
+          <p className="text-xs text-[var(--text-muted)]">أرشفة المستندات الموثقة مع التنبيه الآلي قبل الانتهاء بـ 7 و 30 يوماً وتوليد عقود التأسيس.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handlePrintDocumentReport}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-2 transition"
+            className="btn-secondary text-xs py-2.5"
           >
-            <Printer className="w-4 h-4 text-sky-400" />
+            <Printer className="w-4 h-4 text-indigo-500" />
             طباعة تقرير الخزينة
           </button>
 
           <button
             onClick={() => setShowContractGenerator(true)}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+            className="btn-primary text-xs py-2.5"
           >
             <FileCode className="w-4 h-4" />
             توليد عقد تأسيس (PDF Template)
@@ -154,28 +154,28 @@ export default function DocumentVaultPage() {
       </div>
 
       {/* Renewal Expiry Banners */}
-      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300">
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300">
         <div className="flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
           <div>
-            <p className="font-bold text-white">تنبيه آلي: يوجد مستندات تنتهي خلال 15 يوماً!</p>
-            <p className="text-amber-300/80">السجل التجاري والبطاقة الضريبية لشركة (المصرية للحلول البرمجية) تتطلب التجديد الفوري.</p>
+            <p className="font-bold text-[var(--text-primary)]">تنبيه آلي: يوجد مستندات تنتهي خلال 15 يوماً!</p>
+            <p className="text-[var(--text-secondary)]">السجل التجاري والبطاقة الضريبية لشركة (المصرية للحلول البرمجية) تتطلب التجديد الفوري.</p>
           </div>
         </div>
-        <span className="font-extrabold text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+        <span className="font-bold text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
           تذكير الواتساب جاهز
         </span>
       </div>
 
       {/* Documents Directory */}
-      <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60 text-xs">
-          <span className="font-bold text-slate-300">قائمة المستندات المسجلة بالخزينة ({documents.length})</span>
+      <div className="enterprise-card rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--table-header-bg)] text-xs">
+          <span className="font-bold text-[var(--text-primary)]">قائمة المستندات المسجلة بالخزينة ({documents.length})</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
-            <thead className="bg-slate-800/80 text-slate-400 font-bold border-b border-slate-700">
+            <thead className="bg-[var(--table-header-bg)] text-[var(--text-muted)] font-bold border-b border-[var(--border-subtle)]">
               <tr>
                 <th className="p-3.5">عنوان المستند</th>
                 <th className="p-3.5">اسم العميل</th>
@@ -186,36 +186,36 @@ export default function DocumentVaultPage() {
                 <th className="p-3.5">تحميل ومعاينة</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-200 font-medium">
+            <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)] font-medium">
               {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-800/40 transition">
-                  <td className="p-3.5 font-bold text-white flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-sky-400" />
+                <tr key={doc.id} className="hover:bg-[var(--table-row-hover)] transition-colors">
+                  <td className="p-3.5 font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-500" />
                     {doc.title}
                   </td>
-                  <td className="p-3.5 text-slate-300">{doc.clientName}</td>
+                  <td className="p-3.5 text-[var(--text-secondary)]">{doc.clientName}</td>
                   <td className="p-3.5">
-                    <span className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold">
+                    <span className="px-2.5 py-1 rounded bg-[var(--bg-canvas)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-[11px] font-semibold">
                       {doc.category}
                     </span>
                   </td>
-                  <td className="p-3.5 font-mono text-slate-300">{doc.expiryDate}</td>
+                  <td className="p-3.5 font-mono text-[var(--text-secondary)]">{doc.expiryDate}</td>
                   <td className="p-3.5">
                     {doc.daysRemaining <= 30 ? (
-                      <span className="px-2.5 py-1 rounded text-[10px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
+                      <span className="px-2.5 py-1 rounded text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         ينتهي خلال {doc.daysRemaining} يوم ⚠️
                       </span>
                     ) : (
-                      <span className="px-2.5 py-1 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="px-2.5 py-1 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         ساري وموثق ✓
                       </span>
                     )}
                   </td>
-                  <td className="p-3.5 text-slate-400">{doc.uploaderName}</td>
+                  <td className="p-3.5 text-[var(--text-muted)]">{doc.uploaderName}</td>
                   <td className="p-3.5">
                     <button
                       onClick={() => handlePrintContract()}
-                      className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold flex items-center gap-1 border border-slate-700"
+                      className="px-2.5 py-1.5 rounded bg-[var(--bg-canvas)] hover:bg-[var(--bg-card-hover)] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 border border-[var(--border-subtle)] transition-colors"
                     >
                       <Printer className="w-3.5 h-3.5" /> طباعة / معاينة
                     </button>
@@ -229,31 +229,31 @@ export default function DocumentVaultPage() {
 
       {/* Contract Template Generator Modal */}
       {showContractGenerator && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-2xl rounded-2xl border border-slate-700 p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <FileCode className="w-5 h-5 text-emerald-400" />
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="enterprise-card w-full max-w-2xl rounded-2xl p-6 space-y-4 shadow-subtle-lg">
+            <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+                <FileCode className="w-5 h-5 text-emerald-500" />
                 مولد عقود التأسيس التلقائي (Contract PDF Engine)
               </h3>
-              <button onClick={() => setShowContractGenerator(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowContractGenerator(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-bold">اختر العميل / الشركة *</label>
+                <label className="block text-[var(--text-primary)] mb-1 font-bold">اختر العميل / الشركة *</label>
                 <select
                   value={contractClient}
                   onChange={(e) => setContractClient(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="enterprise-input"
                 >
                   <option value="شركة المصرية للحلول البرمجية">شركة المصرية للحلول البرمجية (ش.م.م)</option>
                   <option value="مؤسسة السعيد للمقاولات والتوريدات">مؤسسة السعيد للمقاولات (منشأة فردية)</option>
                 </select>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 space-y-2 text-slate-300">
-                <p className="font-bold text-sky-400">بيانات القالب التلقائي المدمج:</p>
+              <div className="p-4 rounded-xl bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-2 text-[var(--text-secondary)]">
+                <p className="font-bold text-indigo-600 dark:text-indigo-400">بيانات القالب التلقائي المدمج:</p>
                 <ul className="list-disc list-inside space-y-1 text-[11px]">
                   <li>تضمين رقم العقد ورأس المال المقيد بالسجل التجاري.</li>
                   <li>توزيع الحصص والأنشطة المرخص بها قانوناً.</li>
@@ -262,11 +262,11 @@ export default function DocumentVaultPage() {
               </div>
 
               {generatedPdf && (
-                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-between">
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
                   <span className="font-bold">{generatedPdf}</span>
                   <button
                     onClick={handlePrintContract}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-600/30"
+                    className="btn-primary"
                   >
                     <Printer className="w-4 h-4" /> طباعة عقد PDF الفوري
                   </button>
@@ -277,13 +277,13 @@ export default function DocumentVaultPage() {
                 <button
                   type="button"
                   onClick={() => setShowContractGenerator(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
+                  className="btn-secondary"
                 >
                   إغلاق
                 </button>
                 <button
                   onClick={handleGenerateContract}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-600/30"
+                  className="btn-primary"
                 >
                   توليد العقد الحقيقي الآن
                 </button>
