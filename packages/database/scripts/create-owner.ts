@@ -17,7 +17,8 @@
  * Refuses to create a second owner for the same slug.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PrismaClient, SequenceKind, TenantStatus, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { DEFAULT_ROLE_PERMISSIONS } from '../src/permissions';
@@ -26,6 +27,7 @@ const BCRYPT_ROUNDS = 12;
 
 interface Args {
   sqlOnly: boolean;
+  withSchema: boolean;
   out: string | null;
   tenantName: string;
   slug: string;
@@ -42,6 +44,10 @@ function parseArgs(): Args {
 
   return {
     sqlOnly: argv.includes('--sql'),
+    // Prepends the full schema so one file takes an empty database all the way
+    // to a working office. Splitting setup across several files that must run
+    // in the right order is a reliable way to get a half-built database.
+    withSchema: argv.includes('--with-schema'),
     // Writing the file here rather than redirecting the console keeps shell
     // noise out of it. A previous run piped stdout through PowerShell and the
     // resulting file ended with a stderr line, which Postgres then choked on.
@@ -132,11 +138,23 @@ ON CONFLICT DO NOTHING;
 COMMIT;
 `;
 
+  let output = sqlText;
+
+  if (args.withSchema) {
+    const schemaPath = join(__dirname, '..', 'supabase-setup.sql');
+    if (!existsSync(schemaPath)) {
+      throw new Error(`${schemaPath} is missing. Run: pnpm --filter @saas/database build:sql`);
+    }
+    // Schema first, then the office. The schema half carries its own guard
+    // against running on a populated database.
+    output = `${readFileSync(schemaPath, 'utf8')}\n\n${sqlText}`;
+  }
+
   if (args.out) {
-    writeFileSync(args.out, sqlText, 'utf8');
+    writeFileSync(args.out, output, 'utf8');
     console.log(`SQL written to ${args.out}`);
   } else {
-    console.log(sqlText);
+    console.log(output);
   }
 
   console.log('\n--- credentials — shown once, not stored anywhere ---');

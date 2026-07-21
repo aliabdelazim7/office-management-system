@@ -21,7 +21,7 @@
  * Run with: pnpm --filter @saas/database build:sql
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PERMISSION_CATALOG } from '../src/permissions';
 
@@ -187,70 +187,8 @@ COMMIT;
   console.log(`  migrations : ${migrations.join(', ')}`);
   console.log(`  permissions: ${PERMISSION_CATALOG.length}`);
   console.log(`  lines      : ${lines}`);
-
-  writeIncrementalFiles(migrations);
+  console.log('\nTo get a single file that also creates your office and owner:');
+  console.log('  pnpm --filter @saas/database create-owner -- \\');
+  console.log('    --sql --with-schema --out packages/database/SETUP.local.sql \\');
+  console.log('    --slug <slug> --email <you@example.com>');
 }
-
-/**
- * One file per migration, for databases that already exist.
- *
- * `supabase-setup.sql` refuses to run on a populated schema — correctly, since
- * replaying CREATE TABLE would fail halfway and leave the database in a state
- * nobody can reason about. But an existing database still needs each *new*
- * migration, and re-running the whole setup is not the answer.
- *
- * Each file refuses to run twice by checking `_prisma_migrations` first, and
- * records itself on success.
- */
-function writeIncrementalFiles(migrations: string[]): void {
-  const dir = join(packageRoot, 'sql');
-  mkdirSync(dir, { recursive: true });
-
-  for (const name of migrations) {
-    const body = readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8').replace(/^﻿/, '');
-    const checksum = createHash('sha256').update(body).digest('hex');
-
-    const content = `-- =============================================================================
---  Migration: ${name}
--- =============================================================================
---
---  GENERATED FILE — do not edit.
---  Regenerate: pnpm --filter @saas/database build:sql
---
---  For a database that ALREADY has the schema. Paste into the Supabase SQL
---  Editor. Safe to run twice: it aborts if this migration is already recorded.
---
---  For a brand new database use supabase-setup.sql instead, which contains
---  every migration in order.
--- =============================================================================
-
-BEGIN;
-
-DO $guard$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM "_prisma_migrations"
-    WHERE "migration_name" = ${sql(name)} AND "finished_at" IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'Migration ${name} is already applied. Nothing to do.';
-  END IF;
-END
-$guard$;
-
-${body.trim()}
-
-INSERT INTO "_prisma_migrations"
-  ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
-VALUES
-  (gen_random_uuid()::text, ${sql(checksum)}, now(), ${sql(name)}, now(), 1);
-
-COMMIT;
-`;
-
-    writeFileSync(join(dir, `${name}.sql`), content, 'utf8');
-  }
-
-  console.log(`Wrote ${migrations.length} incremental file(s) to ${dir}`);
-}
-
-main();
