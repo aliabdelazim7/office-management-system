@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Building, Eye, EyeOff, Loader2, LogIn, ShieldCheck, TriangleAlert, UserPlus, Sparkles } from 'lucide-react';
+import { Building, Eye, EyeOff, Loader2, LogIn, ShieldCheck, TriangleAlert, Sparkles, Mail } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { ApiRequestError } from '@/lib/api';
 
@@ -49,7 +48,6 @@ export default function LoginPage() {
           setError(err.message);
         }
       } else {
-        // Fall back to authenticating demo session if server is offline
         console.warn('API login error, activating demo session fallback:', err);
         router.replace('/dashboard');
       }
@@ -71,7 +69,7 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-black text-white">نظام إدارة المكتب المتكامل</h1>
-            <p className="text-xs text-slate-400 mt-1">سجّل الدخول للوصول إلى مكتبك وحساباتك</p>
+            <p className="text-xs text-slate-400 mt-1">تسجيل الدخول الآمن للأدمن والموظفين المصرح لهم</p>
           </div>
         </div>
 
@@ -179,7 +177,7 @@ export default function LoginPage() {
             className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 rounded-xl py-2.5 text-xs flex items-center justify-center gap-2 transition"
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
-            الدخول التجريبي المباشر (Demo Mode)
+            الدخول التجريبي المباشر للأدمن (Demo Mode)
           </button>
 
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1">
@@ -188,14 +186,14 @@ export default function LoginPage() {
           </p>
         </form>
 
-        <div className="text-center pt-2">
-          <Link
-            href="/register"
-            className="text-xs text-sky-400 hover:text-sky-300 font-bold inline-flex items-center gap-1.5 hover:underline"
-          >
-            <UserPlus className="w-4 h-4" />
-            إنشاء حساب مكتب جديد (Register New Office)
-          </Link>
+        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3 text-center space-y-1">
+          <p className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-sky-400" />
+            دخول الفريق يتم حصرياً بدعوة رسمية من الأدمن
+          </p>
+          <p className="text-[11px] text-slate-500">
+            يقوم الأدمن بإرسال رابط الدعوة الرسمية للموظف عبر الإيميل لإنشاء كلمة مروره وتفعيل حسابه.
+          </p>
         </div>
       </div>
     </div>
