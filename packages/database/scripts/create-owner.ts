@@ -31,6 +31,7 @@ interface Args {
   demo: boolean;
   demoRole: UserRole;
   demoEmail: string;
+  password: string | null;
   out: string | null;
   tenantName: string;
   slug: string;
@@ -57,6 +58,10 @@ function parseArgs(): Args {
     demo: argv.includes('--demo'),
     demoRole: (get('demo-role', 'MANAGER') as UserRole),
     demoEmail: get('demo-email', 'demo@example.com').toLowerCase(),
+    // Lets a chosen password be used instead of a generated one. Only for a
+    // short-lived review account you intend to delete; a password you picked
+    // and typed into a chat is not a secret.
+    password: get('password', '') || null,
     // Writing the file here rather than redirecting the console keeps shell
     // noise out of it. A previous run piped stdout through PowerShell and the
     // resulting file ended with a stderr line, which Postgres then choked on.
@@ -280,8 +285,16 @@ async function insertDirectly(args: Args, password: string, passwordHash: string
 
 async function main(): Promise<void> {
   const args = parseArgs();
-  const password = generatePassword();
+  const password = args.password ?? generatePassword();
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  if (args.password) {
+    console.warn(
+      '\n! Using a password supplied on the command line. It is in your shell\n' +
+        '  history and is not a secret. Fine for a review account you will delete;\n' +
+        '  never for an account that outlives the review.\n',
+    );
+  }
 
   const demo = args.demo
     ? await (async () => {

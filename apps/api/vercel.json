@@ -7,7 +7,7 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 30,
-      "includeFiles": "{dist/**,../../node_modules/.pnpm/@prisma+client*/**,../../node_modules/.pnpm/.prisma/**}"
+      "includeFiles": "{dist/**,../../node_modules/.prisma/**,../../node_modules/@prisma/**}"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
