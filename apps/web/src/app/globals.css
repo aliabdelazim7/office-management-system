@@ -5,47 +5,135 @@
 @tailwind utilities;
 
 :root {
-  --font-cairo: 'Cairo', sans-serif;
+  --font-cairo: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Enterprise Semantic Color Tokens (Light Defaults) */
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-secondary: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+}
+
+.dark {
+  /* Enterprise Dark Tokens (Linear / Stripe #0B0F14 Palette) */
+  --bg-canvas: #0b0f14;
+  --bg-surface: #101418;
+  --bg-surface-secondary: #14181f;
+  --border-subtle: #222733;
+  --border-hover: #333a48;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
 }
 
 body {
   font-family: var(--font-cairo);
   direction: rtl;
   text-align: right;
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #0b0f14;
+  color: #f3f4f6;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.75);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Premium Enterprise Card System */
+.glass-card, .enterprise-card {
+  background-color: #14181f;
+  border: 1px solid #222733;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  transition: border-color 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-header {
-  background: rgba(15, 23, 42, 0.85);
+.glass-card:hover, .enterprise-card:hover {
+  border-color: #333a48;
+}
+
+.glass-header, .enterprise-header {
+  background-color: rgba(16, 20, 24, 0.9);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #222733;
 }
 
-/* Custom scrollbar */
+/* Enterprise Form Controls */
+.enterprise-input {
+  width: 100%;
+  background-color: #101418;
+  border: 1px solid #222733;
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: #f3f4f6;
+  font-size: 0.875rem;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.enterprise-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.enterprise-input::placeholder {
+  color: #6b7280;
+}
+
+/* Enterprise Buttons */
+.btn-primary {
+  background-color: #4f46e5;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  display: inline-flex;
+  items-center: center;
+  gap: 0.5rem;
+  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary:hover {
+  background-color: #4338ca;
+}
+
+.btn-secondary {
+  background-color: #1a202c;
+  border: 1px solid #222733;
+  color: #e2e8f0;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  display: inline-flex;
+  items-center: center;
+  gap: 0.5rem;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.btn-secondary:hover {
+  background-color: #2d3748;
+  border-color: #333a48;
+}
+
+/* Custom Clean Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #0b0f14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #222733;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #333a48;
 }
 
-/* Print CSS Formatting for Production PDFs & Receipts */
+/* Print CSS Formatting */
 @media print {
   body {
     background-color: #ffffff !important;
@@ -66,7 +154,7 @@ body {
     color: #000000 !important;
   }
 
-  .glass-card {
+  .glass-card, .enterprise-card {
     background: #ffffff !important;
     border: 1px solid #cccccc !important;
     color: #000000 !important;

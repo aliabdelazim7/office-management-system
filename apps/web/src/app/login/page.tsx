@@ -56,21 +56,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
-      <div className="w-full max-w-md space-y-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0b0f14] text-slate-100">
+      <div className="w-full max-w-md space-y-5">
         <div className="flex flex-col items-center gap-3 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-600/30">
-            <Building className="w-7 h-7 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-subtle-sm">
+            <Building className="w-6 h-6 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-black text-white">نظام إدارة المكتب المتكامل</h1>
+            <h1 className="text-xl font-bold text-white">نظام إدارة المكتب المتكامل</h1>
             <p className="text-xs text-slate-400 mt-1">تسجيل الدخول الآمن للأدمن والموظفين المصرح لهم</p>
           </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="glass-card rounded-2xl border border-slate-800 p-6 flex flex-col gap-4 shadow-xl"
+          className="enterprise-card rounded-2xl p-6 flex flex-col gap-4 shadow-subtle-md"
         >
           {error && (
             <div
@@ -94,8 +94,8 @@ export default function LoginPage() {
               dir="ltr"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              placeholder="owner@elite.test"
+              className="enterprise-input text-left"
+              placeholder="owner@bayan.test"
             />
           </div>
 
@@ -112,13 +112,13 @@ export default function LoginPage() {
                 dir="ltr"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 pl-11 text-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="enterprise-input text-left pl-11"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
                 aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -136,7 +136,7 @@ export default function LoginPage() {
                 required
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                className="enterprise-input"
               >
                 <option value="">اختر المكتب…</option>
                 {tenantChoices.map((t) => (
@@ -151,7 +151,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/30 transition-colors"
+            className="btn-primary w-full justify-center text-sm py-2.5 mt-1"
           >
             {submitting ? (
               <>
@@ -166,18 +166,18 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             جلسة مشفّرة، وكل عملية تُسجَّل في سجل التدقيق
           </p>
         </form>
 
-        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3 text-center space-y-1">
+        <div className="bg-[#101418] border border-[#222733] rounded-xl p-3.5 text-center space-y-1">
           <p className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5">
-            <Mail className="w-3.5 h-3.5 text-sky-400" />
+            <Mail className="w-3.5 h-3.5 text-indigo-400" />
             دخول الفريق يتم حصرياً بدعوة رسمية من الأدمن
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-400">
             يقوم الأدمن بإرسال رابط الدعوة الرسمية للموظف عبر الإيميل لإنشاء كلمة مروره وتفعيل حسابه.
           </p>
         </div>
