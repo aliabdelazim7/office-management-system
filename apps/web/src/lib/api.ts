@@ -1,4 +1,12 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const getApiBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api/v1';
+  }
+  return 'http://localhost:4000/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const ACCESS_KEY = 'office_erp_access';
 const REFRESH_KEY = 'office_erp_refresh';
@@ -39,15 +47,6 @@ export const tokenStore = {
   },
 };
 
-/**
- * Serialises refresh attempts.
- *
- * When a page fires several requests at once and the access token has expired,
- * every one of them gets a 401. Without this, each would rotate the refresh
- * token independently — and the API treats a reused refresh token as theft and
- * revokes the entire session family. So the first refresh wins and the rest
- * wait on its result.
- */
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function refreshTokens(): Promise<boolean> {
@@ -99,31 +98,32 @@ export async function apiFetch<T = unknown>(
       refreshInFlight = null;
     });
 
-    if (await refreshInFlight) {
-      response = await send();
-    }
-  }
-
-  if (response.status === 204) return undefined as T;
-
-  const body = await response.json().catch(() => ({
-    statusCode: response.status,
-    message: 'تعذر قراءة رد الخادم',
-  }));
-
-  if (!response.ok) {
-    // A failed refresh means the session is genuinely over. Send the user to
-    // the login page rather than leaving them on a screen that cannot load.
-    if (response.status === 401 && typeof window !== 'undefined' && !skipAuth) {
-      tokenStore.clear();
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+    const refreshed = await refreshInFlight;
+    if (refreshed) {
+      try {
+        response = await send();
+      } catch {
+        throw new ApiRequestError(0, { statusCode: 0, message: 'تعذر الاتصال بالخادم' });
       }
     }
-    throw new ApiRequestError(response.status, body as ApiError);
   }
 
-  return body as T;
-}
+  if (!response.ok) {
+    let body: ApiError;
+    try {
+      body = (await response.json()) as ApiError;
+    } catch {
+      body = {
+        statusCode: response.status,
+        message: response.statusText || 'حدث خطأ غير متوقع في الخادم',
+      };
+    }
+    throw new ApiRequestError(response.status, body);
+  }
 
-export { API_BASE_URL };
+  if (response.status === 204) {
+    return undefined as unknown as T;
+  }
+
+  return (await response.json()) as T;
+}
