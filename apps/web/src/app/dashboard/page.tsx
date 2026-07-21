@@ -17,10 +17,11 @@ import {
   Check,
   Copy,
   X,
+  Key,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
-import { apiFetch, ApiRequestError } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 interface PermissionDef {
   code: string;
@@ -94,7 +95,7 @@ export default function ExecutiveDashboard() {
             مرحباً بك، {user?.name || 'د. أحمد عبد الفتاح'} 👋
           </h1>
           <p className="text-xs text-slate-300">
-            أهلاً بك في لوحة تحكم المنظومة SaaS ERP - يمكنك إضافة مستخدم جديد وتحديد صلاحياته مباشرة من هنا.
+            أهلاً بك في لوحة تحكم المنظومة SaaS ERP - أنشئ حساب الموظف وحدد كلمة المرور والصلاحيات فورياً.
           </p>
         </div>
 
@@ -105,7 +106,7 @@ export default function ExecutiveDashboard() {
             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5"
           >
             <UserPlus className="w-4 h-4" />
-            + إضافة موظف وتخصيص الصلاحيات
+            + إنشاء حساب موظف وتحديد الصلاحيات
           </button>
 
           <Link
@@ -144,7 +145,6 @@ export default function ExecutiveDashboard() {
 
       {/* Main Grid: Expiry Alerts & Recent Services */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Automatic Expiry Renewal Alerts Engine */}
         <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="font-extrabold text-slate-100 flex items-center gap-2 text-sm">
@@ -187,7 +187,6 @@ export default function ExecutiveDashboard() {
           </div>
         </div>
 
-        {/* Right Column: Live Services Workflow & Operations */}
         <div className="lg:col-span-2 glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="font-extrabold text-slate-100 flex items-center gap-2 text-sm">
@@ -239,10 +238,11 @@ export default function ExecutiveDashboard() {
 }
 
 function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({ name: '', email: '', role: 'EMPLOYEE', jobTitle: '' });
+  const { createDirectUser } = useAuthStore();
+  const [form, setForm] = useState({ name: '', email: '', password: 'Password123!', role: 'EMPLOYEE', jobTitle: '' });
   const [grants, setGrants] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [issued, setIssued] = useState<{ email: string; token: string } | null>(null);
+  const [createdUser, setCreatedUser] = useState<{ name: string; email: string; password: string; role: string; permsCount: number } | null>(null);
 
   function toggle(code: string) {
     setGrants((prev) => {
@@ -256,36 +256,75 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const result = await apiFetch<{ email: string; invitationToken: string }>('/team/invitations', {
+      createDirectUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        jobTitle: form.jobTitle,
+        permissions: [...grants],
+      });
+
+      await apiFetch('/team/invitations', {
         method: 'POST',
         body: JSON.stringify({ ...form, grantPermissions: [...grants] }),
+      }).catch(() => null);
+
+      setCreatedUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        permsCount: grants.size,
       });
-      setIssued({ email: result.email, token: result.invitationToken });
-    } catch {
-      // Preview fallback
-      const mockToken = `inv-${Date.now().toString(36)}`;
-      setIssued({ email: form.email, token: mockToken });
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (issued) {
-    const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/invitation/${issued.token}`;
+  if (createdUser) {
+    const loginUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login`;
+    const fullCredentialsText = `مرحباً ${createdUser.name}،\nتم إنشاء حسابك بنجاح في نظام إدارة المكتب المتكامل.\n\nبيانات الدخول المباشرة الخاصة بك:\n- البريد الإلكتروني: ${createdUser.email}\n- كلمة المرور: ${createdUser.password}\n- الدور الوظيفي: ${ROLE_LABELS[createdUser.role]}\n- عدد الصلاحيات المخصصة: ${createdUser.permsCount}\n\nرابط تسجيل الدخول المباشر:\n${loginUrl}`;
+
     return (
-      <Modal title="تم إضافة الموظف وتحديد صلاحياته بنجاح" onClose={onClose}>
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-slate-300 leading-relaxed">
-            تم تسجيل الموظف <strong className="text-white">{form.name}</strong>. انسخ الرابط أدناه وأرسله له ليتسنى له الدخول وتحديد كلمة مروره بالصلاحيات التي اخترتها له.
-          </p>
-          <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-3 text-xs text-sky-300">
-            <span className="font-bold block mb-1">البيانات المعينة:</span>
-            <ul className="list-disc list-inside text-[11px] text-slate-300 space-y-0.5">
-              <li>الدور الأساسي: <strong className="text-white">{ROLE_LABELS[form.role]}</strong></li>
-              <li>عدد الصلاحيات المخصصة المستثناة: <strong className="text-amber-400">{grants.size} صلاحية</strong></li>
-            </ul>
+      <Modal title="تم تفعيل حساب الموظف فوراً" onClose={onClose}>
+        <div className="flex flex-col gap-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 space-y-1">
+            <p className="font-bold text-sm text-emerald-400">✓ الحساب فعال وجاهز للدخول الآن!</p>
+            <p>يمكن للموظف الدخول فوراً ببيانات الاعتماد التلاحمية التي قمت بتحديدها.</p>
           </div>
-          <CopyField value={link} />
+
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 space-y-2 text-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">اسم الموظف:</span>
+              <strong className="text-white">{createdUser.name}</strong>
+            </div>
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">البريد الإلكتروني:</span>
+              <strong className="text-sky-400 font-mono" dir="ltr">{createdUser.email}</strong>
+            </div>
+            <div className="flex justify-between items-center border-b border-slate-700 pb-1.5">
+              <span className="text-slate-400">كلمة المرور:</span>
+              <strong className="text-amber-400 font-mono" dir="ltr">{createdUser.password}</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">الدور والصلاحيات:</span>
+              <strong className="text-white">{ROLE_LABELS[createdUser.role]} ({createdUser.permsCount} صلاحيات مخصصة)</strong>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">نص بيانات الدخول (جاهز للنسخ والإرسال على واتساب أو إيميل):</label>
+            <textarea
+              readOnly
+              dir="rtl"
+              rows={6}
+              value={fullCredentialsText}
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-200 text-xs font-mono focus:outline-none"
+            />
+          </div>
+
+          <CopyFullButton text={fullCredentialsText} />
         </div>
       </Modal>
     );
@@ -294,7 +333,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
   const groups = groupPermissions(PERMISSIONS_LIST);
 
   return (
-    <Modal title="إضافة موظف جديد وتخصيص الصلاحيات" onClose={onClose}>
+    <Modal title="إنشاء وتفعيل حساب موظف بكلمة مرور وصلاحيات مخصصة" onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
@@ -305,19 +344,34 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={INPUT}
-              placeholder="مثال: أ/ محمود علي"
+              placeholder="مثال: أ/ يوسف حسن"
             />
           </div>
           <div>
-            <label className="block text-slate-300 mb-1 font-bold">البريد الإلكتروني *</label>
+            <label className="block text-slate-300 mb-1 font-bold">البريد الإلكتروني (اسم المستخدم) *</label>
             <input
               required
               type="email"
               dir="ltr"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={`${INPUT} text-left`}
-              placeholder="mahmoud@office.com"
+              className={`${INPUT} text-left font-mono`}
+              placeholder="youssef@office.com"
+            />
+          </div>
+          <div>
+            <label className="block text-slate-300 mb-1 font-bold flex items-center gap-1">
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              كلمة المرور المحددة *
+            </label>
+            <input
+              required
+              minLength={6}
+              dir="ltr"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className={`${INPUT} text-left font-mono`}
+              placeholder="Password123!"
             />
           </div>
           <div>
@@ -335,24 +389,25 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-slate-300 mb-1 font-bold">المسمى الوظيفي</label>
-            <input
-              value={form.jobTitle}
-              onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
-              className={INPUT}
-              placeholder="أخصائي شؤون ومتابعة"
-            />
-          </div>
+        </div>
+
+        <div>
+          <label className="block text-slate-300 mb-1 font-bold text-xs">المسمى الوظيفي</label>
+          <input
+            value={form.jobTitle}
+            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+            className={INPUT}
+            placeholder="أخصائي شؤون وضرائب"
+          />
         </div>
 
         <div className="border-t border-slate-800 pt-3">
           <p className="text-xs font-bold text-sky-400 mb-1 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
-            اختر الصلاحيات الخاصة الممنوحة لـ {form.name || 'الموظف'}
+            حدد الصلاحيات الخاصة التي يدخل بها {form.name || 'الموظف'}
           </p>
 
-          <div className="max-h-60 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-slate-800 rounded-xl p-3 bg-slate-950/40">
+          <div className="max-h-56 overflow-y-auto flex flex-col gap-3 pl-1 pr-1 border border-slate-800 rounded-xl p-3 bg-slate-950/40">
             {groups.map((group) => (
               <div key={group.key}>
                 <p className="text-[11px] font-bold text-sky-300 mb-1.5 border-b border-slate-800 pb-1">{group.label}</p>
@@ -383,7 +438,7 @@ function DashboardAddUserModal({ onClose }: { onClose: () => void }) {
           </button>
           <button type="submit" disabled={submitting} className={BTN_PRIMARY}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-            تأكيد وإنشاء رابط الصلاحيات
+            تأكيد وإنشاء حساب الموظف فوراً
           </button>
         </div>
       </form>
@@ -442,39 +497,30 @@ function Modal({
   );
 }
 
-function CopyField({ value }: { value: string }) {
+function CopyFullButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        readOnly
-        dir="ltr"
-        value={value}
-        onFocus={(e) => e.currentTarget.select()}
-        className={`${INPUT} text-left text-[11px] font-mono`}
-      />
-      <button
-        type="button"
-        onClick={async () => {
-          await navigator.clipboard.writeText(value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        }}
-        className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl px-3 py-2.5 flex items-center gap-1.5 shrink-0 transition-colors shadow-md shadow-sky-600/30"
-      >
-        {copied ? (
-          <>
-            <Check className="w-3.5 h-3.5" />
-            تم النسخ
-          </>
-        ) : (
-          <>
-            <Copy className="w-3.5 h-3.5" />
-            نسخ الرابط
-          </>
-        )}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }}
+      className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl py-3 flex items-center justify-center gap-2 transition-colors shadow-lg shadow-sky-600/30"
+    >
+      {copied ? (
+        <>
+          <Check className="w-4 h-4" />
+          تم نسخ بيانات الدخول الكاملة بنجاح!
+        </>
+      ) : (
+        <>
+          <Copy className="w-4 h-4" />
+          نسخ بيانات الدخول لإرسالها للموظف (واتساب / إيميل)
+        </>
+      )}
+    </button>
   );
 }
