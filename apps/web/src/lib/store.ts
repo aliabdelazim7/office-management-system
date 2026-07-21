@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiFetch, ApiRequestError, tokenStore } from './api';
+import { apiFetch, tokenStore } from './api';
 
 export interface SessionUser {
   id: string;
@@ -13,11 +13,17 @@ export interface SessionUser {
 
 interface AuthState {
   user: SessionUser | null;
+  /** Effective permissions from the server. The UI renders from these. */
   permissions: Set<string>;
   status: 'unknown' | 'authenticated' | 'anonymous';
 
   login: (email: string, password: string, tenantSlug?: string) => Promise<void>;
-  setSessionData: (data: { accessToken: string; refreshToken: string; user: SessionUser & { permissions?: string[] } }) => void;
+  setSessionData: (data: {
+    accessToken: string;
+    refreshToken: string;
+    user: SessionUser & { permissions?: string[] };
+  }) => void;
+  /** Reads the session back from the API using the stored tokens. */
   restore: () => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
@@ -40,19 +46,22 @@ interface MeResponse {
   tenant: { id: string; name: string; slug: string; logoUrl?: string | null };
 }
 
-const DEFAULT_ADMIN_USER: SessionUser = {
-  id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
-  name: 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)',
-  email: 'owner@elite.com',
-  role: 'OWNER',
-  jobTitle: 'المدير التنفيذي والمالك',
-  tenant: {
-    id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    name: 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية',
-    slug: 'elite-consulting',
-  },
-};
-
+/**
+ * Session state — a mirror of what the server said, never a source of truth.
+ *
+ * Two things have been deliberately removed from this file and must not come
+ * back:
+ *
+ *   1. `switchDemoRole`, which let anyone rewrite their own role in the browser.
+ *   2. An offline fallback that accepted a hardcoded email and password when the
+ *      API was unreachable and granted `permissions: ['*']`. Anyone who could
+ *      make the API look unreachable — an adblocker, a captive portal, a wrong
+ *      env var, or simply the API being down — got full owner access to the UI.
+ *
+ * Both existed to make a demo work without a backend. The correct fix for "the
+ * API is not deployed" is to deploy the API. A login that succeeds without one
+ * is not a login.
+ */
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   permissions: new Set<string>(),
@@ -67,50 +76,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: data.user.email,
         role: data.user.role,
         avatarUrl: data.user.avatarUrl,
+        jobTitle: data.user.jobTitle,
         tenant: data.user.tenant,
       },
-      permissions: new Set(data.user.permissions || []),
+      permissions: new Set(data.user.permissions ?? []),
       status: 'authenticated',
     });
   },
 
   login: async (email, password, tenantSlug) => {
-    try {
-      const data = await apiFetch<LoginResponse>('/auth/login', {
-        method: 'POST',
-        skipAuth: true,
-        body: JSON.stringify({ email, password, ...(tenantSlug ? { tenantSlug } : {}) }),
-      });
+    const data = await apiFetch<LoginResponse>('/auth/login', {
+      method: 'POST',
+      skipAuth: true,
+      body: JSON.stringify({ email, password, ...(tenantSlug ? { tenantSlug } : {}) }),
+    });
 
-      tokenStore.set(data.accessToken, data.refreshToken);
-      set({
-        user: {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          avatarUrl: data.user.avatarUrl,
-          tenant: data.user.tenant,
-        },
-        permissions: new Set(data.user.permissions),
-        status: 'authenticated',
-      });
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 0) {
-        // Backend server is unreachable (offline or no NEXT_PUBLIC_API_URL set).
-        // Fallback to authenticate the owner admin seamlessly.
-        if (email.trim().toLowerCase() === 'owner@elite.com' && password === 'Password123!') {
-          tokenStore.set('mock-access-token', 'mock-refresh-token');
-          set({
-            user: DEFAULT_ADMIN_USER,
-            permissions: new Set(['*']),
-            status: 'authenticated',
-          });
-          return;
-        }
-      }
-      throw err;
-    }
+    get().setSessionData(data);
   },
 
   restore: async () => {
@@ -128,41 +109,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           email: me.email,
           role: me.role,
           avatarUrl: me.avatarUrl,
+          jobTitle: me.jobTitle,
           tenant: me.tenant,
         },
         permissions: new Set(me.permissions),
         status: 'authenticated',
       });
     } catch {
-      // Fallback restore for mock session if offline
-      if (tokenStore.access === 'mock-access-token') {
-        set({
-          user: DEFAULT_ADMIN_USER,
-          permissions: new Set(['*']),
-          status: 'authenticated',
-        });
-      } else {
-        tokenStore.clear();
-        set({ status: 'anonymous', user: null, permissions: new Set() });
-      }
+      tokenStore.clear();
+      set({ status: 'anonymous', user: null, permissions: new Set() });
     }
   },
 
   logout: async () => {
-    try {
-      await apiFetch('/auth/logout', { method: 'POST' });
-    } catch {
-      // ignore network error on logout
-    } finally {
-      tokenStore.clear();
-      set({ user: null, permissions: new Set(), status: 'anonymous' });
+    const refreshToken = tokenStore.refresh;
+    if (refreshToken) {
+      // Best effort: clear local state even if the call fails, so a network
+      // problem cannot leave someone apparently signed in.
+      await apiFetch('/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+      }).catch(() => undefined);
     }
+    tokenStore.clear();
+    set({ user: null, permissions: new Set(), status: 'anonymous' });
   },
 
-  can: (permission: string) => {
-    const { permissions, user } = get();
-    if (!user) return false;
-    if (user.role === 'OWNER' || permissions.has('*')) return true;
-    return permissions.has(permission);
-  },
+  /**
+   * The server already expands OWNER to every permission in the catalogue, so
+   * there is no role special-casing here. Adding `role === 'OWNER'` as a
+   * shortcut would make the UI disagree with the API the moment an office
+   * customises its matrix.
+   */
+  can: (permission) => get().permissions.has(permission),
 }));

@@ -27,25 +27,33 @@ const ROLE_LABELS: Record<string, string> = {
   VIEWER: 'المراقب',
 };
 
+/**
+ * Codes must match packages/database/src/permissions.ts exactly.
+ *
+ * They briefly did not — the list used `crm.read`, `doc.read`, `user.read` and
+ * friends, none of which exist in the catalogue. Every check failed, and the
+ * only reason the sidebar still rendered was an `role === 'OWNER'` escape hatch
+ * that hid the breakage for the one role that could not notice it. Everyone
+ * else saw an empty sidebar.
+ */
 const NAV_ITEMS: Array<{ label: string; href: string; icon: typeof Users; permission?: string }> = [
-  { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users, permission: 'crm.read' },
-  { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText, permission: 'doc.read' },
-  { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2, permission: 'crm.read' },
-  { label: 'إدارة الخدمات والمسارات', href: '/dashboard/services', icon: GitPullRequest, permission: 'service.read' },
-  { label: 'فريق العمل والصلاحيات', href: '/dashboard/team', icon: UsersRound, permission: 'user.read' },
-  { label: 'المهام الميدانية وتتبع GPS', href: '/dashboard/hr-gps', icon: UserCheck, permission: 'field.read' },
-  { label: 'الإدارة المالية والمقبوضات', href: '/dashboard/finance', icon: Wallet, permission: 'finance.read' },
-  { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.read' },
+  { label: 'لوحة القيادة والمؤشرات', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
+  { label: 'إدارة العملاء والكيانات (CRM)', href: '/dashboard/crm', icon: Users, permission: 'client.view' },
+  { label: 'خزينة المستندات والتجديدات', href: '/dashboard/documents', icon: FileText, permission: 'document.view' },
+  { label: 'السجل التجاري والضرائب والتأمينات', href: '/dashboard/commercial-registers', icon: Building2, permission: 'gov.view' },
+  { label: 'إدارة الخدمات والمسارات', href: '/dashboard/services', icon: GitPullRequest, permission: 'service.view' },
+  { label: 'فريق العمل والصلاحيات', href: '/dashboard/team', icon: UsersRound, permission: 'user.view' },
+  { label: 'المهام الميدانية وتتبع GPS', href: '/dashboard/hr-gps', icon: UserCheck, permission: 'field.view_own' },
+  { label: 'الإدارة المالية والمقبوضات', href: '/dashboard/finance', icon: Wallet, permission: 'invoice.view' },
+  { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.view' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, can } = useAuthStore();
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.permission || user?.role === 'OWNER' || can(item.permission)
-  );
+  // No role special-case: the server already gives OWNER every permission.
+  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
 
   return (
     <aside className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-screen sticky top-0 z-40">
