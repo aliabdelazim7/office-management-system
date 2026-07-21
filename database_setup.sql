@@ -497,20 +497,21 @@ INSERT INTO "permissions" ("code", "groupKey", "groupLabel", "labelAr", "labelEn
 ('audit.read', 'settings', 'إعدادات المنظومة والصلاحيات', 'عرض سجل التدقيق الأمني', 'View Audit Logs', 'الاطلاع على جميع التحركات والأمن', 620);
 
 -- -----------------------------------------------------------------------------
--- 5. SEED DEFAULT TENANT AND USERS (WITH VALID RFC4122 UUIDs)
+-- 5. SEED DEFAULT TENANT AND ADMIN USER (owner@elite.com / Password123!)
 -- -----------------------------------------------------------------------------
 
 -- Tenant (مكتب النخبة)
 INSERT INTO "tenants" ("id", "name", "slug", "status", "phone", "email", "address", "taxNumber") VALUES
 ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية', 'elite-consulting', 'ACTIVE', '01000000000', 'contact@elite-office.com', 'القاهرة - التجمع الخامس - شارع التسعين الشمالي', '789-456-123');
 
--- Users (Bcrypted hash for 'Password123!')
+-- Admin User (owner@elite.com / Password123!)
+-- Verified Bcrypt Hash: $2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2
 INSERT INTO "users" ("id", "tenantId", "name", "email", "passwordHash", "role", "status", "phone", "jobTitle", "salary") VALUES
-('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'د. أحمد عبد الفتاح (المالك)', 'owner@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'OWNER', 'ACTIVE', '01011111111', 'المدير التنفيذي والمالك', 35000),
-('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ سارة محمود (مديرة العمليات)', 'manager@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'MANAGER', 'ACTIVE', '01022222222', 'مديرة التشغيل والمعاملات', 18000),
-('d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ محمد طاهر (محاسب مكتب)', 'accountant@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'ACCOUNTANT', 'ACTIVE', '01033333333', 'رئيس قسم الحسابات والضرائب', 12000),
-('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ خليل ابراهيم (مندوب ميداني)', 'employee@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'EMPLOYEE', 'ACTIVE', '01044444444', 'مسؤول علاقات حكومية ومندوب ميداني', 8000),
-('f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ علاء مرسي (مراقب جودة)', 'viewer@elite.com', '$2a$12$9vO4dG2q2R7T9y0p5q4r3u8s1t2u3v4w5x6y7z8a9b0c1d2e3f4g', 'VIEWER', 'ACTIVE', '01055555555', 'مستشار قانوني خارجي (اطلاع)', 0);
+('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'د. أحمد عبد الفتاح (المالك الأكاديمي والمدير)', 'owner@elite.com', '$2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2', 'OWNER', 'ACTIVE', '01011111111', 'المدير التنفيذي والمالك', 35000),
+('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ سارة محمود (مديرة العمليات)', 'manager@elite.com', '$2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2', 'MANAGER', 'ACTIVE', '01022222222', 'مديرة التشغيل والمعاملات', 18000),
+('d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ محمد طاهر (محاسب مكتب)', 'accountant@elite.com', '$2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2', 'ACCOUNTANT', 'ACTIVE', '01033333333', 'رئيس قسم الحسابات والضرائب', 12000),
+('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ خليل ابراهيم (مندوب ميداني)', 'employee@elite.com', '$2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2', 'EMPLOYEE', 'ACTIVE', '01044444444', 'مسؤول علاقات حكومية ومندوب ميداني', 8000),
+('f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a66', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'أ/ علاء مرسي (مراقب جودة)', 'viewer@elite.com', '$2a$12$34uMtc6G14uLRN5UCUaCx.u/DV9VZ44/vtJHT00uP8CahMGkQv/O2', 'VIEWER', 'ACTIVE', '01055555555', 'مستشار قانوني خارجي (اطلاع)', 0);
 
 -- Number Sequences
 INSERT INTO "number_sequences" ("id", "tenantId", "kind", "prefix", "current") VALUES
