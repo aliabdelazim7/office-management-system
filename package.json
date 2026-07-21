@@ -7,16 +7,22 @@
     "dev:api": "pnpm --filter api dev",
     "postinstall": "pnpm --filter @saas/database generate",
     "build:packages": "pnpm --filter @saas/types build && pnpm --filter @saas/database build",
+    "build:web": "pnpm --filter @saas/types build && pnpm --filter web build",
+    "build:api": "pnpm build:packages && pnpm --filter api build",
     "build": "pnpm build:packages && pnpm --filter api build && pnpm --filter web build",
+    "typecheck": "pnpm --filter @saas/database typecheck && pnpm --filter api exec tsc --noEmit",
+    "test": "pnpm --filter api test",
     "db:generate": "pnpm --filter @saas/database generate",
-    "db:push": "pnpm --filter @saas/database push",
+    "db:migrate": "pnpm --filter @saas/database migrate",
+    "db:deploy": "pnpm --filter @saas/database migrate:deploy",
+    "db:studio": "pnpm --filter @saas/database studio",
     "db:seed": "pnpm --filter @saas/database seed"
   },
-  "dependencies": {
-    "next": "^14.2.3"
-  },
   "devDependencies": {
-    "next": "^14.2.3",
-    "typescript": "^5.3.3"
-  }
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "packageManager": "pnpm@10.28.0"
 }

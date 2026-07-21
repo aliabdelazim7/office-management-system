@@ -1,31 +1,31 @@
 /**
- * Vercel serverless entry point for the NestJS API.
+ * Vercel serverless entry for the NestJS API.
  *
- * Vercel runs each request in a short-lived function, so the Nest application
- * is built once per warm container and reused. Rebuilding it per request would
- * open a new database connection every time and exhaust Supabase's pool within
- * seconds.
+ * The Nest application is built once per warm container and cached. Building it
+ * per request would open a fresh Postgres connection every time and exhaust
+ * Supabase's pool within seconds of any real traffic.
  *
- * Imports the COMPILED output rather than src/: Vercel's TypeScript handling
- * for `api/` functions does not apply our tsconfig, and Nest depends on
- * `emitDecoratorMetadata`. `pnpm build:api` runs first (see vercel.json).
+ * Imports the COMPILED output rather than `src/`: Vercel does not apply this
+ * project's tsconfig to files under `api/`, and Nest depends on
+ * `emitDecoratorMetadata`. `pnpm build:api` runs first — see vercel.json.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
-import compression from 'compression';
-import helmet from 'helmet';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { AppModule } = require('../dist/app.module');
+type NodeHandler = (req: IncomingMessage, res: ServerResponse) => void;
 
-type Handler = (req: IncomingMessage, res: ServerResponse) => void;
+let cached: Promise<NodeHandler> | null = null;
 
-let cached: Handler | null = null;
+async function bootstrap(): Promise<NodeHandler> {
+  // Required at call time, not import time: a throw here must surface as a
+  // logged 500 from the handler rather than a module-load crash, which Vercel
+  // reports only as the opaque FUNCTION_INVOCATION_FAILED.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { AppModule } = require('../dist/app.module');
 
-async function bootstrap(): Promise<Handler> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn'],
   });
@@ -33,8 +33,6 @@ async function bootstrap(): Promise<Handler> {
   const config = app.get(ConfigService).get('app');
 
   app.setGlobalPrefix(config.apiPrefix);
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use(compression());
   app.set('trust proxy', 1);
 
   app.enableCors({
@@ -53,10 +51,27 @@ async function bootstrap(): Promise<Handler> {
   );
 
   await app.init();
-  return app.getHttpAdapter().getInstance() as unknown as Handler;
+  return app.getHttpAdapter().getInstance() as unknown as NodeHandler;
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  cached ??= await bootstrap();
-  cached(req, res);
+  try {
+    cached ??= bootstrap();
+    const express = await cached;
+    express(req, res);
+  } catch (error) {
+    // Reset so the next invocation retries instead of serving a poisoned cache.
+    cached = null;
+    // eslint-disable-next-line no-console
+    console.error('Nest bootstrap failed:', error);
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    res.end(
+      JSON.stringify({
+        statusCode: 500,
+        message: 'تعذر تشغيل الخدمة',
+        detail: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 }
