@@ -17,6 +17,7 @@
  * Refuses to create a second owner for the same slug.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { PrismaClient, SequenceKind, TenantStatus, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { DEFAULT_ROLE_PERMISSIONS } from '../src/permissions';
@@ -25,6 +26,7 @@ const BCRYPT_ROUNDS = 12;
 
 interface Args {
   sqlOnly: boolean;
+  out: string | null;
   tenantName: string;
   slug: string;
   ownerName: string;
@@ -40,6 +42,10 @@ function parseArgs(): Args {
 
   return {
     sqlOnly: argv.includes('--sql'),
+    // Writing the file here rather than redirecting the console keeps shell
+    // noise out of it. A previous run piped stdout through PowerShell and the
+    // resulting file ended with a stderr line, which Postgres then choked on.
+    out: get('out', '') || null,
     tenantName: get('tenant-name', 'مكتبي للخدمات والاستشارات'),
     slug: get('slug', 'main'),
     ownerName: get('owner-name', 'مالك المكتب'),
@@ -85,8 +91,7 @@ async function emitSql(args: Args, password: string, passwordHash: string): Prom
     .map(([kind, prefix]) => `  (gen_random_uuid(), ${q(tenantId)}::uuid, '${kind}', ${q(prefix)}, 0)`)
     .join(',\n');
 
-  console.log(`
--- =============================================================================
+  const sqlText = `-- =============================================================================
 --  Creates the office and its OWNER account.
 --  Paste into the Supabase SQL Editor and run once.
 --
@@ -125,11 +130,19 @@ ${sequences}
 ON CONFLICT DO NOTHING;
 
 COMMIT;
-`);
+`;
 
-  console.error('--- credentials (console only, not in the SQL above) ---');
-  console.error(`email:    ${args.email}`);
-  console.error(`password: ${password}`);
+  if (args.out) {
+    writeFileSync(args.out, sqlText, 'utf8');
+    console.log(`SQL written to ${args.out}`);
+  } else {
+    console.log(sqlText);
+  }
+
+  console.log('\n--- credentials — shown once, not stored anywhere ---');
+  console.log(`  email:    ${args.email}`);
+  console.log(`  password: ${password}`);
+  console.log('\nSign in, then change the password from your profile.');
 }
 
 async function insertDirectly(args: Args, password: string, passwordHash: string): Promise<void> {
