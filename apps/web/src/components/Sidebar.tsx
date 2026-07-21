@@ -16,6 +16,7 @@ import {
   Users,
   UserCog,
   Wallet,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '../lib/store';
 
@@ -39,7 +40,13 @@ const NAV_ITEMS: Array<{ label: string; href: string; icon: typeof Users; permis
   { label: 'سجلات التدقيق والأمان', href: '/dashboard/audit-logs', icon: ShieldAlert, permission: 'audit.read' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  mobileOpen = false,
+  onCloseMobile,
+}: {
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}) {
   const pathname = usePathname();
   const { user, can } = useAuthStore();
 
@@ -47,21 +54,34 @@ export default function Sidebar() {
     (item) => !item.permission || user?.role === 'OWNER' || can(item.permission)
   );
 
-  return (
-    <aside className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col h-screen sticky top-0 z-40">
-      <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 shrink-0">
-          <Building className="w-5 h-5" />
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <h2 className="text-sm font-bold text-slate-100 truncate">{user?.tenant.name ?? '—'}</h2>
-          <span className="text-xs text-sky-400 font-medium flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-            <span className="truncate" dir="ltr">
-              {user?.tenant.slug}
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-slate-900 text-slate-200">
+      <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 shrink-0">
+            <Building className="w-5 h-5" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <h2 className="text-xs sm:text-sm font-bold text-slate-100 truncate">{user?.tenant.name ?? '—'}</h2>
+            <span className="text-xs text-sky-400 font-medium flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+              <span className="truncate" dir="ltr">
+                {user?.tenant.slug}
+              </span>
             </span>
-          </span>
+          </div>
         </div>
+
+        {onCloseMobile && (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/80 transition-colors"
+            aria-label="إغلاق القائمة"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <div className="mx-4 my-3 p-2.5 rounded-lg bg-slate-800/70 border border-slate-700/50 flex items-center justify-between text-xs">
@@ -71,7 +91,7 @@ export default function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+      <nav className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5 scrollbar-thin">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -79,9 +99,10 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+              onClick={onCloseMobile}
+              className={`flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 ${
                 isActive
-                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
@@ -108,6 +129,28 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-72 bg-slate-900 border-l border-slate-800 flex-col h-screen sticky top-0 z-40 shrink-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <aside className="relative w-80 max-w-[85vw] bg-slate-900 h-full border-l border-slate-800 shadow-2xl flex flex-col z-50 mr-auto">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

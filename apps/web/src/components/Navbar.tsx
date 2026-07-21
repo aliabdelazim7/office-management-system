@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, Search, ShieldCheck, User } from 'lucide-react';
+import { Bell, LogOut, Menu, Search, ShieldCheck, User } from 'lucide-react';
 import { useAuthStore } from '../lib/store';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -13,16 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
   VIEWER: 'المراقب',
 };
 
-/**
- * The role selector that used to live here is gone.
- *
- * It called `switchDemoRole`, which rewrote the current user's role in browser
- * state — so anyone could hand themselves OWNER and the UI would render the
- * owner's screens. The API never honoured it, but a control that appears to
- * grant access is worse than no control: it teaches people the wrong model of
- * who can do what. The role shown below is whatever the server says it is.
- */
-export default function Navbar() {
+export default function Navbar({ onToggleMobileSidebar }: { onToggleMobileSidebar?: () => void }) {
   const router = useRouter();
   const { user, permissions, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,18 +35,30 @@ export default function Navbar() {
   }
 
   return (
-    <header className="h-16 glass-header sticky top-0 z-30 px-6 flex items-center justify-between">
-      <div className="relative w-96 max-w-full">
-        <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="search"
-          disabled
-          className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl pr-10 pl-4 py-2 text-xs text-white placeholder:text-slate-500 disabled:opacity-60"
-          placeholder="البحث الشامل — يُفعّل مع وحدة العملاء"
-        />
+    <header className="h-16 glass-header sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md">
+      <div className="flex items-center gap-2.5 flex-1 max-w-full">
+        {/* Mobile Hamburger Toggle */}
+        <button
+          type="button"
+          onClick={onToggleMobileSidebar}
+          className="lg:hidden p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:text-white transition-colors shrink-0"
+          aria-label="فتح القائمة الجانبية"
+        >
+          <Menu className="w-5 h-5 text-sky-400" />
+        </button>
+
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            disabled
+            className="w-full bg-slate-800/80 border border-slate-700/60 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder:text-slate-500 disabled:opacity-60"
+            placeholder="البحث الشامل في المنظومة…"
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           {permissions.size} صلاحية
@@ -74,15 +77,15 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 hover:bg-slate-800/60 transition-colors"
+            className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-slate-800/60 transition-colors"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {user?.name?.trim().charAt(0) ?? <User className="w-4 h-4" />}
             </div>
-            <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-white leading-tight max-w-[10rem] truncate">
+            <div className="text-right hidden md:block">
+              <p className="text-xs font-bold text-white leading-tight max-w-[9rem] truncate">
                 {user?.name ?? '—'}
               </p>
               <p className="text-[10px] text-slate-400 leading-tight">
@@ -94,7 +97,7 @@ export default function Navbar() {
           {menuOpen && (
             <div
               role="menu"
-              className="absolute top-12 left-0 w-60 bg-slate-850 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+              className="absolute top-12 left-0 w-60 bg-slate-850 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50"
             >
               <div className="p-3.5 border-b border-slate-700">
                 <p className="text-xs font-bold text-white truncate">{user?.name}</p>
