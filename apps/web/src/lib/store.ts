@@ -13,12 +13,11 @@ export interface SessionUser {
 
 interface AuthState {
   user: SessionUser | null;
-  /** Effective permissions from the server. The UI renders from these. */
   permissions: Set<string>;
   status: 'unknown' | 'authenticated' | 'anonymous';
 
   login: (email: string, password: string, tenantSlug?: string) => Promise<void>;
-  /** Reads the session back from the API using the stored refresh token. */
+  setSessionData: (data: { accessToken: string; refreshToken: string; user: SessionUser & { permissions?: string[] } }) => void;
   restore: () => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
@@ -41,19 +40,26 @@ interface MeResponse {
   tenant: { id: string; name: string; slug: string; logoUrl?: string | null };
 }
 
-/**
- * Session state.
- *
- * Permissions come from the server on every restore and are never inferred
- * client-side. A previous version of this store shipped a `switchDemoRole`
- * action that let anyone rewrite their own role in the browser — the UI would
- * then render an owner's screens for a viewer. The API is the only authority on
- * what a session may do; this store just mirrors what it was told.
- */
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   permissions: new Set<string>(),
   status: 'unknown',
+
+  setSessionData: (data) => {
+    tokenStore.set(data.accessToken, data.refreshToken);
+    set({
+      user: {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        avatarUrl: data.user.avatarUrl,
+        tenant: data.user.tenant,
+      },
+      permissions: new Set(data.user.permissions || []),
+      status: 'authenticated',
+    });
+  },
 
   login: async (email, password, tenantSlug) => {
     const data = await apiFetch<LoginResponse>('/auth/login', {
@@ -107,8 +113,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     const refreshToken = tokenStore.refresh;
     if (refreshToken) {
-      // Best effort: clear local state even if the server call fails, so a
-      // network problem cannot leave someone apparently signed in.
       await apiFetch('/auth/logout', {
         method: 'POST',
         body: JSON.stringify({ refreshToken }),

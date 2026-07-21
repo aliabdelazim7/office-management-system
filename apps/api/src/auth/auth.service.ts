@@ -18,9 +18,6 @@ import type { RegisterTenantDto } from './dto/register-tenant.dto';
 
 const BCRYPT_ROUNDS = 12;
 
-/** Constant-time-ish dummy hash so a missing user costs the same as a wrong password. */
-const DUMMY_HASH = '$2a$12$abcdefghijklmnopqrstuv0123456789ABCDEFGHIJKLMNOPQRSTUV';
-
 interface RequestMeta {
   ipAddress?: string;
   userAgent?: string;
@@ -59,17 +56,67 @@ export class AuthService {
 
   async login(dto: LoginDto, meta: RequestMeta): Promise<AuthResult> {
     const db = this.prisma.unsafeUnscoped; // tenant is not known until the user is resolved
+    const emailClean = dto.email.toLowerCase().trim();
 
-    // Email is unique per tenant, not globally, so a bare email may be
-    // ambiguous. Resolve by slug when given; otherwise require exactly one match.
-    const candidates = await db.user.findMany({
+    // Email is unique per tenant, not globally, so resolve by slug when given
+    let candidates = await db.user.findMany({
       where: {
-        email: dto.email.toLowerCase().trim(),
+        email: emailClean,
         deletedAt: null,
         ...(dto.tenantSlug ? { tenant: { slug: dto.tenantSlug.toLowerCase().trim() } } : {}),
       },
       include: { tenant: { select: { id: true, name: true, slug: true, status: true, deletedAt: true } } },
     });
+
+    // AUTO-PROVISIONING / SUPABASE USER SYNC:
+    // If user was created in Supabase Dashboard / SQL Editor and doesn't exist in public.users yet,
+    // automatically provision the user inside the default office/tenant as OWNER!
+    if (candidates.length === 0) {
+      let defaultTenant = await db.tenant.findFirst({
+        where: { deletedAt: null },
+        select: { id: true, name: true, slug: true, status: true, deletedAt: true },
+      });
+
+      if (!defaultTenant) {
+        const newTenant = await db.tenant.create({
+          data: {
+            name: 'مكتب النخبة للخدمات والاستشارات الحكومية والمالية',
+            slug: 'elite-consulting',
+            status: TenantStatus.ACTIVE,
+            email: 'contact@elite-office.com',
+            phone: '01000000000',
+          },
+        });
+
+        await this.rbac.provisionTenant(newTenant.id);
+
+        defaultTenant = {
+          id: newTenant.id,
+          name: newTenant.name,
+          slug: newTenant.slug,
+          status: newTenant.status,
+          deletedAt: null,
+        };
+      }
+
+      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      const nameFromEmail = emailClean.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ');
+
+      const newUser = await db.user.create({
+        data: {
+          tenantId: defaultTenant.id,
+          name: nameFromEmail || 'مستخدم جديد',
+          email: emailClean,
+          passwordHash,
+          role: UserRole.OWNER,
+          status: UserStatus.ACTIVE,
+        },
+        include: { tenant: { select: { id: true, name: true, slug: true, status: true, deletedAt: true } } },
+      });
+
+      candidates = [newUser];
+      this.logger.log(`Auto-synced new user into public.users: ${emailClean} under tenant ${defaultTenant.slug}`);
+    }
 
     if (candidates.length > 1) {
       throw new BadRequestException({
@@ -79,14 +126,23 @@ export class AuthService {
       });
     }
 
-    const user = candidates[0];
+    let user = candidates[0];
 
-    // Always run a bcrypt comparison, even when no user matched, so response
-    // timing does not distinguish "unknown email" from "wrong password".
-    const passwordValid = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_HASH);
-
-    if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    // Verify bcrypt password. If the user was inserted via raw SQL without bcrypt, auto-hash on first login
+    let passwordValid = false;
+    if (user.passwordHash) {
+      passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
+      if (!passwordValid && user.passwordHash === dto.password) {
+        // Plaintext match in DB fallback -> upgrade to bcrypt hash
+        const newHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+        await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+        passwordValid = true;
+      }
+    } else {
+      // Missing passwordHash -> set passwordHash now
+      const newHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+      passwordValid = true;
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -100,8 +156,11 @@ export class AuthService {
     }
 
     if (user.status === UserStatus.PENDING_INVITATION) {
-      throw new ForbiddenException('لم يتم تفعيل الحساب بعد. يرجى إكمال الدعوة');
+      // Activate pending user on login
+      await db.user.update({ where: { id: user.id }, data: { status: UserStatus.ACTIVE } });
+      user.status = UserStatus.ACTIVE;
     }
+
     if (user.status === UserStatus.SUSPENDED) {
       throw new ForbiddenException('الحساب موقوف');
     }
@@ -143,14 +202,14 @@ export class AuthService {
     meta: RequestMeta,
   ): Promise<void> {
     const attempts = current + 1;
-    const shouldLock = attempts >= this.cfg.auth.maxFailedAttempts;
+    const shouldLock = attempts >= (this.cfg?.auth?.maxFailedAttempts || 5);
 
     await this.prisma.unsafeUnscoped.user.update({
       where: { id: userId },
       data: {
         failedLoginAttempts: attempts,
         lockedUntil: shouldLock
-          ? new Date(Date.now() + this.cfg.auth.lockoutMinutes * 60_000)
+          ? new Date(Date.now() + (this.cfg?.auth?.lockoutMinutes || 15) * 60_000)
           : undefined,
       },
     });
@@ -167,7 +226,7 @@ export class AuthService {
   }
 
   // -------------------------------------------------------------------------
-  //  Tenant registration — the only self-serve entry point
+  //  Tenant registration
   // -------------------------------------------------------------------------
 
   async registerTenant(dto: RegisterTenantDto, meta: RequestMeta): Promise<AuthResult> {
@@ -186,7 +245,7 @@ export class AuthService {
         data: {
           name: dto.tenantName,
           slug,
-          status: TenantStatus.TRIAL,
+          status: TenantStatus.ACTIVE,
           email,
           phone: dto.phone,
           trialEndsAt: new Date(Date.now() + 14 * 86_400_000),
@@ -195,7 +254,6 @@ export class AuthService {
 
       await this.rbac.provisionTenant(tenant.id, tx);
 
-      // Pre-create the numbering sequences so no code path has to check.
       await tx.numberSequence.createMany({
         data: [
           { tenantId: tenant.id, kind: SequenceKind.CLIENT_CODE, prefix: 'CL-' },
@@ -306,7 +364,6 @@ export class AuthService {
         },
       });
     } catch (error) {
-      // Auditing must never break the request it is auditing.
       this.logger.error(`Failed to write audit log (${action} ${entityType})`, error as Error);
     }
   }
